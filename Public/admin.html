@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Cryptographic Vault</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            padding: 30px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+        tr:hover {
+            background-color: #fdfdfd;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge-admin {
+            background-color: #ffe4e6;
+            color: #e11d48;
+        }
+        .badge-user {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+        .error-message {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fee2e2;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Administrative Identity Matrix</h2>
+    
+    <div id="errorBanner" class="error-message"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>System ID</th>
+                <th>Registered Username</th>
+                <th>Access Authorization Role</th>
+                <th>Creation Date/Timestamp</th>
+            </tr>
+        </thead>
+        <tbody id="usersTable">
+            <tr>
+                <td colspan="4" style="text-align: center; color: #94a3b8;">Querying authorization ledger instances...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+async function loadUsers() {
+    console.log("loadUsers invoked. Extracting authentication token...");
+    const tableBody = document.getElementById('usersTable');
+    const errorBanner = document.getElementById('errorBanner');
+    
+    // Pull JWT Token directly out of local storage
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        console.warn("Authentication failed: Token was missing from localStorage.");
+        showError('Access denied: Authentication payload missing. Please log in.');
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; font-weight: 600;">Unauthenticated - Missing Token</td></tr>`;
+        return;
+    }
+
+    try {
+        console.log("Dispatching secure fetch call upstream to administrative API endpoint...");
+        const res = await fetch('http://localhost:3000/api/admin/users', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Handle strict route authorization level errors
+        if (res.status === 401 || res.status === 403) {
+            console.error(`Authorization Error! HTTP Response Code status returned: ${res.status}`);
+            showError('Access denied: Administrative privileges required to parse user matrix entries.');
+            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; font-weight:600;">Unauthorized Access Vector Blocked (Requires Admin Role)</td></tr>`;
+            return;
+        }
+
+        if (!res.ok) {
+            throw new Error(`Server returned unexpected error state status: ${res.status}`);
+        }
+
+        const users = await res.json();
+        console.log("Identity ledger payload safely downloaded. Record Count:", users.length);
+        
+        // Clear previous state placeholders cleanly
+        tableBody.innerHTML = '';
+
+        if (users.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #94a3b8;">No registered identity clusters returned.</td></tr>`;
+            return;
+        }
+
+        // Defensively build row layouts to completely neutralize XSS inputs
+        users.forEach(user => {
+            const row = document.createElement('tr');
+
+            // 1. System ID Cell
+            const idCell = document.createElement('td');
+            idCell.textContent = user.id;
+            row.appendChild(idCell);
+
+            // 2. Username Cell (Safely parsed via textContent assignment)
+            const nameCell = document.createElement('td');
+            nameCell.textContent = user.username; 
+            row.appendChild(nameCell);
+
+            // 3. Access Authorization Role Badge Cell
+            const roleCell = document.createElement('td');
+            const roleBadge = document.createElement('span');
+            // Support default fallback if role property comes down undefined
+            const currentRole = user.role || 'user';
+            roleBadge.textContent = currentRole;
+            roleBadge.className = currentRole === 'admin' ? 'badge badge-admin' : 'badge badge-user';
+            roleCell.appendChild(roleBadge);
+            row.appendChild(roleCell);
+
+            // 4. Creation Date / Timestamp Cell 
+            const createdCell = document.createElement('td');
+            // Support database objects tracking across created_at, timestamp, or registration_date variants
+            const rawDate = user.created_at || user.timestamp || user.registration_date;
+            const dateStr = rawDate ? new Date(rawDate).toLocaleString() : 'N/A';
+            createdCell.textContent = dateStr;
+            row.appendChild(createdCell);
+
+            // Append row block directly to DOM matrix
+            tableBody.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error('Failed to parse administrative user dashboard elements:', err);
+        showError(`System connection exception execution trace dropped: ${err.message}`);
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444;">Ledger connection failed. Check console trace logs.</td></tr>`;
+    }
+}
+
+function showError(msg) {
+    const errorBanner = document.getElementById('errorBanner');
+    if (errorBanner) {
+        errorBanner.textContent = msg;
+        errorBanner.style.display = 'block';
+    }
+}
+
+// FIX: Force direct execution pipeline trigger immediately upon runtime mounting
+console.log("Admin Dashboard Engine Initialized.");
+loadUsers();
+</script>
+
+</body>
+</html>

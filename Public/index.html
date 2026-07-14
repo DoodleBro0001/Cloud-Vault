@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>E2EE Secure Vault</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        input, button, select {
+            padding: 10px;
+            margin: 5px;
+            box-sizing: border-box;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .delete-btn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 30px;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            font-weight: bold;
+        }
+
+        #uploadStatus {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .form-group label {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #334155;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>🔐 Secure E2EE File Vault</h2>
+
+    <div id="authSection">
+        <div class="login-card" style="margin-bottom: 30px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h3>Login to Account Context</h3>
+            <input type="text" id="username" placeholder="Username" style="width: calc(50% - 12px);">
+            <input type="password" id="password" placeholder="Password" style="width: calc(50% - 12px);">
+            <br>
+            <button onclick="handleLogin()" style="width: 100%; margin-top: 10px; background: #0f172a; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Login</button>
+        </div>
+
+        <div class="registration-card" style="padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h3>Create Enterprise Identity Profile</h3>
+            <form id="extendedRegisterForm" onsubmit="executeCryptographicRegistration(event)">
+                
+                <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 12px;">
+                    <div style="flex: 1;">
+                        <label>First Name</label>
+                        <input type="text" id="regFirstName" required style="width: 100%;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Last Name</label>
+                        <input type="text" id="regLastName" required style="width: 100%;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Unique System Username</label>
+                    <input type="text" id="regUsername" required placeholder="e.g., jsmith99" style="width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Personal Email Address</label>
+                    <input type="email" id="regEmail" required placeholder="name@domain.com" style="width: 100%;">
+                </div>
+
+                <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 12px;">
+                    <div style="width: 30%;">
+                        <label>Region</label>
+                        <select id="regRegionCode" style="width: 100%; height: 40px; margin: 5px 0;">
+                            <option value="US">US (+1)</option>
+                            <option value="LK">LK (+94)</option>
+                            <option value="GB">GB (+44)</option>
+                            <option value="AU">AU (+61)</option>
+                            <option value="IN">IN (+91)</option>
+                        </select>
+                    </div>
+                    <div style="width: 70%;">
+                        <label>Mobile Number</label>
+                        <input type="tel" id="regMobile" required placeholder="771234567" style="width: 100%;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; color: #1e293b;">High-Protection Password</label>
+                    <input type="password" id="regPassword" required 
+                           placeholder="Minimum 10 characters" 
+                           class="form-control" 
+                           style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;"
+                           oninput="analyzePasswordStrength(this.value)">
+                    
+                    <div style="margin-top: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 0.75rem; color: #64748b;">Protection Level:</span>
+                            <span id="strengthLabel" style="font-size: 0.75rem; font-weight: bold; color: #64748b;">None</span>
+                        </div>
+                        <div style="width: 100%; height: 6px; background-color: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                            <div id="strengthBar" style="width: 0%; height: 100%; background-color: #cbd5e1; transition: width 0.3s, background-color 0.3s;"></div>
+                        </div>
+                        <div id="policyFeedback" style="font-size: 0.75rem; margin-top: 6px; line-height: 1.4; color: #64748b;">
+                            Must be at least 10 characters long.
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" style="width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                    Initialize & Provision Secure E2EE Account
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="vaultSection" class="hidden">
+        <h3>Welcome, <span id="displayUser"></span></h3>
+        <button onclick="logout()">Logout</button>
+        <hr>
+
+        <input type="file" id="filePicker">
+        <button onclick="removeSelectedFile()">Remove Selected File</button>
+        <button onclick="handleUpload()" id="uploadBtn">Upload Encrypted File</button>
+
+        <div id="uploadStatus"></div>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar">0%</div>
+        </div>
+
+        <hr>
+        <h3>Your Files</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>File Name</th>
+                    <th>Size</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="fileList"></tbody>
+        </table>
+    </div>
+</div>
+
+<script src="crypto-logic.js"></script>
+
+<script>
+let userKeys = null;
+let loggedInUser = null;
+
+// =====================================
+// HELPER: Format File Size
+// =====================================
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// =====================================
+// PASSWORD POLICY STRENGTH ANALYZER ENGINE
+// =====================================
+function analyzePasswordStrength(password) {
+    const bar = document.getElementById('strengthBar');
+    const label = document.getElementById('strengthLabel');
+    const feedback = document.getElementById('policyFeedback');
+    
+    if (!password || password.length === 0) {
+        bar.style.width = '0%';
+        bar.style.backgroundColor = '#cbd5e1';
+        label.textContent = 'None';
+        label.style.color = '#64748b';
+        feedback.textContent = 'Must be at least 10 characters long.';
+        feedback.style.color = '#64748b';
+        return;
+    }
+
+    let score = 0;
+    let missingCriteria = [];
+
+    // Validation rule matrix
+    if (password.length >= 10) score += 1; else missingCriteria.push("10+ characters");
+    if (/[A-Z]/.test(password)) score += 1; else missingCriteria.push("uppercase letter");
+    if (/[a-z]/.test(password)) score += 1; else missingCriteria.push("lowercase letter");
+    if (/[0-9]/.test(password)) score += 1; else missingCriteria.push("number");
+    if (/[@$!%*?&]/.test(password)) score += 1; else missingCriteria.push("special symbol (@$!%*?&)");
+
+    // Convert internal score calculations into visual elements using flat conditions
+    // This removes the case 0 structural confusion crashing VS Code's language tokenizer
+    if (score === 0) {
+        bar.style.width = '0%';
+        bar.style.backgroundColor = '#cbd5e1';
+        label.textContent = 'None';
+        label.style.color = '#64748b';
+    } else if (score === 1 || score === 2) {
+        bar.style.width = '25%';
+        bar.style.backgroundColor = '#ef4444'; // Red
+        label.textContent = 'Weak / Vulnerable';
+        label.style.color = '#ef4444';
+    } else if (score === 3) {
+        bar.style.width = '50%';
+        bar.style.backgroundColor = '#f59e0b'; // Orange
+        label.textContent = 'Medium / Moderate';
+        label.style.color = '#f59e0b';
+    } else if (score === 4) {
+        bar.style.width = '75%';
+        bar.style.backgroundColor = '#3b82f6'; // Blue
+        label.textContent = 'Strong Protection';
+        label.style.color = '#3b82f6';
+    } else if (score === 5) {
+        bar.style.width = '100%';
+        bar.style.backgroundColor = '#10b981'; // Emerald Green
+        label.textContent = 'Enterprise Grade Elite';
+        label.style.color = '#10b981';
+    }
+
+    // Process output feedback string layout array
+    if (missingCriteria.length > 0) {
+        feedback.textContent = "Required adjustments: Add " + missingCriteria.join(', ') + ".";
+        feedback.style.color = '#b45309'; // Warning Amber tint
+    } else {
+        feedback.textContent = "Security policy parameters completely satisfied.";
+        feedback.style.color = '#047857'; // Success Green tint
+    }
+}
+
+// =====================================
+// ON PAGE RELOAD RESTORE SESSION
+// =====================================
+window.onload = async () => {
+    const savedUser = localStorage.getItem('loggedInUser');
+    if (savedUser) {
+        try {
+            loggedInUser = JSON.parse(savedUser);
+
+            if (!loggedInUser.publicKey || !loggedInUser.encryptedPrivateKey) {
+                throw new Error("Stored session identity lacks core cryptographic components.");
+            }
+
+            // Restore working keys instantly from session storage parameters
+            userKeys = {
+                publicKey: await importKeyFromJwk(loggedInUser.publicKey, 'public'),
+                privateKey: await importKeyFromJwk(loggedInUser.encryptedPrivateKey, 'private')
+            };
+            
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('vaultSection').classList.remove('hidden');
+            document.getElementById('displayUser').innerText = loggedInUser.username;
+            
+            refreshFiles();
+        } catch (e) {
+            console.error("Session key restoration failed, forcing logout:", e);
+            logout();
+        }
+    }
+};
+
+// =====================================
+// EXTENDED CRYPTOGRAPHIC REGISTRATION PIPELINE
+// =====================================
+async function executeCryptographicRegistration(event) {
+    event.preventDefault(); // Lock down explicit native form actions
+
+    const firstName = document.getElementById('regFirstName').value.trim();
+    const lastName = document.getElementById('regLastName').value.trim();
+    const username = document.getElementById('regUsername').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const regionCode = document.getElementById('regRegionCode').value;
+    const mobileNumber = document.getElementById('regMobile').value.trim();
+    const password = document.getElementById('regPassword').value;
+
+    // Frontend validation enforcement rule check block
+    if (password.length < 10) {
+        alert("Security Policy Violation: Password length must be at least 10 characters.");
+        return;
+    }
+
+    try {
+        // 1. Generate clean, isolated keys for this account context
+        const newKeys = await generateUserKeys();
+        
+        // 2. Stringify them for secure transit structure
+        const publicKeyString = await exportKeyToJwk(newKeys.publicKey);
+        const privateKeyString = await exportKeyToJwk(newKeys.privateKey); 
+
+        // 3. Dispatch metadata verification blocks paired alongside public materials
+        const res = await fetch('http://localhost:3000/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username, 
+                password,
+                first_name: firstName,
+                last_name: lastName,
+                personal_email: email,
+                mobile_number: mobileNumber,
+                region_code: regionCode,
+                publicKey: publicKeyString, 
+                encryptedPrivateKey: privateKeyString 
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert('Registration fully successful. System workspace configured. Please login.');
+            document.getElementById('extendedRegisterForm').reset();
+            analyzePasswordStrength(''); // Reset structural strength visualizers to neutral
+        } else {
+            alert(data.error || 'Registration failed');
+        }
+    } catch (error) {
+        console.error('Registration structural fault sequence:', error);
+        alert('Registration execution failed pipeline: ' + error.message);
+    }
+}
+
+// =====================================
+// PERSISTENT LOGIN PIPELINE
+// =====================================
+async function handleLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    if (!username || !password) {
+        alert('Username and password parameters required');
+        return;
+    }
+
+    try {
+        const res = await fetch('http://localhost:3000/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+            alert(data.error || 'Login failed');
+            return;
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('loggedInUser', JSON.stringify(data.user));
+        loggedInUser = data.user;
+
+        // Reconstruct user keys instantly from database delivery payload
+        userKeys = {
+            publicKey: await importKeyFromJwk(data.user.publicKey, 'public'),
+            privateKey: await importKeyFromJwk(data.user.encryptedPrivateKey, 'private')
+        };
+
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('vaultSection').classList.remove('hidden');
+        document.getElementById('displayUser').innerText = loggedInUser.username;
+
+        refreshFiles();
+    } catch (error) {
+        console.error('Login engine error:', error);
+        alert('Authentication process exception: ' + error.message);
+    }
+}
+
+// =====================================
+// LOGOUT
+// =====================================
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('loggedInUser');
+    location.reload();
+}
+
+// =====================================
+// UPLOAD FILE WITH PROGRESS
+// =====================================
+async function handleUpload() {
+    if (!loggedInUser || !userKeys) {
+        alert('Please log in before running asset transfers');
+        return;
+    }
+
+    const file = document.getElementById('filePicker').files[0];
+    if (!file) {
+        alert('Select a file to encrypt and upload');
+        return;
+    }
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusDiv = document.getElementById('uploadStatus');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+
+    try {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+
+        statusDiv.textContent = `Encrypting ${file.name} (${formatFileSize(file.size)})...`;
+        statusDiv.style.color = 'blue';
+
+        if (typeof encryptFile !== 'function') {
+            throw new Error('encryptFile utility functionality is missing from context logic storage.');
+        }
+
+        const { blob, wrappedKey, iv } = await encryptFile(file, userKeys.publicKey);
+
+        statusDiv.textContent = 'File encrypted. Uploading securely to vault array...';
+
+        const formData = new FormData();
+        formData.append('file', blob);
+        formData.append('fileName', file.name);
+        formData.append('wrappedKey', wrappedKey);
+        formData.append('iv', iv);
+
+        const token = localStorage.getItem('token');
+
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                progressBar.style.width = percentComplete + '%';
+                progressBar.textContent = Math.round(percentComplete) + '%';
+            }
+        });
+
+        xhr.addEventListener('load', () => {
+            try {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        statusDiv.textContent = 'Upload completely successful!';
+                        statusDiv.style.color = 'green';
+                        document.getElementById('filePicker').value = '';
+                        refreshFiles();
+                        setTimeout(() => {
+                            statusDiv.textContent = '';
+                            progressContainer.style.display = 'none';
+                        }, 3000);
+                    } else {
+                        throw new Error(data.error || 'Upload backend rejected parameters.');
+                    }
+                } else {
+                    throw new Error('Upload server returned status code flag: ' + xhr.status);
+                }
+            } catch (innerError) {
+                statusDiv.textContent = 'Processing error: ' + innerError.message;
+                statusDiv.style.color = 'red';
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Encrypted File';
+            }
+        });
+
+        xhr.addEventListener('error', () => {
+            statusDiv.textContent = 'Network execution interface block stopped data pipeline.';
+            statusDiv.style.color = 'red';
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload Encrypted File';
+        });
+
+        xhr.open('POST', 'http://localhost:3000/api/upload');
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.send(formData);
+
+    } catch (error) {
+        console.error('Upload handling crash sequence:', error);
+        statusDiv.textContent = 'Upload failed: ' + error.message;
+        statusDiv.style.color = 'red';
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload Encrypted File';
+    }
+}
+
+// =====================================
+// REMOVE SELECTED FILE FROM INPUT
+// =====================================
+function removeSelectedFile() {
+    const filePicker = document.getElementById('filePicker');
+    if (!filePicker.files.length) {
+        alert('No file selected to remove');
+        return;
+    }
+    filePicker.value = '';
+    alert('Selected file removed from input');
+}
+
+// =====================================
+// DELETE UPLOADED FILE FROM SERVER
+// =====================================
+async function deleteFile(fileId) {
+    if (!confirm('Are you sure you want to permanently delete this file?')) return;
+
+    const token = localStorage.getItem('token'); 
+
+    try {
+        const response = await fetch(`http://localhost:3000/api/delete/${fileId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            setTimeout(() => {
+                refreshFiles(); 
+            }, 300);
+        } else {
+            alert('Delete rejected: ' + (data.error || 'Backend failed process execution.'));
+        }
+    } catch (error) {
+        console.error('Error executing delete action pipeline:', error);
+        alert('Network request stopped working.');
+    }
+}
+
+// =====================================
+// LOAD USER FILES (Defensive Build)
+// =====================================
+async function refreshFiles() {
+    const list = document.getElementById('fileList');
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const res = await fetch('http://localhost:3000/api/files', {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP Error Status Flags Raised: ${res.status}`);
+        }
+
+        const files = await res.json();
+
+        if (!Array.isArray(files) || files.length === 0) {
+            list.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #777; font-style: italic;">No files uploaded yet.</td></tr>`;
+            return;
+        }
+
+        list.innerHTML = files.map(f => {
+            const cleanName = f.file_name.replace(/"/g, '&quot;');
+            return `
+                <tr>
+                    <td>${f.file_name}</td>
+                    <td>${formatFileSize(f.file_size || 0)}</td>
+                    <td>
+                        <button 
+                            onclick="downloadAndDecrypt(${f.id}, this.getAttribute('data-key'), this.getAttribute('data-iv'), this.getAttribute('data-name'))"
+                            data-key="${f.wrapped_key || ''}" 
+                            data-iv="${f.iv || ''}" 
+                            data-name="${cleanName}">
+                            Download & Decrypt
+                        </button>
+                        <button class="delete-btn" onclick="deleteFile(${f.id})">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Refresh files mapping matrix failure:', error);
+        list.innerHTML = `<tr><td colspan="3" style="color: red; text-align: center; font-weight: bold;">Failed to parse data structure from server.</td></tr>`;
+    }
+}
+
+// =====================================
+// DOWNLOAD & DECRYPT
+// =====================================
+async function downloadAndDecrypt(id, wrappedKey, iv, fileName) {
+    try {
+        const token = localStorage.getItem('token');
+        if (!userKeys || !userKeys.privateKey) {
+            throw new Error("Private key identity missing. Clear browser cache and re-authenticate context session.");
+        }
+
+        const res = await fetch(`http://localhost:3000/api/download/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!res.ok) throw new Error('Could not fetch storage payload artifact block from server.');
+
+        const encryptedBuf = await res.arrayBuffer();
+        console.log('Decrypting file material properties...');
+
+        const decryptedBuf = await decryptFile(
+            encryptedBuf,
+            wrappedKey,
+            iv,
+            userKeys.privateKey
+        );
+
+        console.log('File decrypted successfully');
+
+        const blob = new Blob([decryptedBuf]);
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Download/decrypt processing failure pipeline:', error);
+        alert('Failed to download and decrypt file payload: ' + error.message);
+    }
+}
+</script>
+
+</body>
+</html>
