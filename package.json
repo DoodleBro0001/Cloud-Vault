@@ -17,8 +17,15 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "sqlite3": "^6.0.1"
   },
-  "devDependencies": {}
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dharshanchandrasegar2-dotcom/secure-vault.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dharshanchandrasegar2-dotcom/secure-vault/issues"
+  },
+  "homepage": "https://github.com/dharshanchandrasegar2-dotcom/secure-vault#readme"
 }

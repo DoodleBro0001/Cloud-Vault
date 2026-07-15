@@ -8,14 +8,11 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-// Change this in your server.js
+// ======================================
+// SERVER & GLOBAL INITIALIZATION
+// ======================================
+const app = express(); 
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
-const app = express();
 const SECRET = process.env.JWT_SECRET || 'fallback_secret_for_development';
 
 // ======================================
@@ -29,11 +26,10 @@ app.use(cors({
 }));
 
 // ======================================
-// INCREASED BODY SIZE LIMITS
+// INCREASED BODY SIZE LIMITS & STATIC ASSETS
 // ======================================
 app.use(express.json({ limit: '10gb' }));
 app.use(express.urlencoded({ limit: '10gb', extended: true }));
-
 app.use(express.static('public'));
 
 // ======================================
@@ -59,7 +55,7 @@ db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,                 -- Acts as system-wide unique identifier/handle
+            username TEXT UNIQUE,                -- Acts as system-wide unique identifier/handle
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
             personal_email TEXT UNIQUE NOT NULL,
@@ -121,9 +117,7 @@ db.serialize(() => {
         }
     });
 
-});
-
-; // Correctly closes db.serialize
+}); // Correctly closes db.serialize
 
 // ======================================
 // Multer Setup - INCREASED FILE SIZE LIMIT
@@ -230,7 +224,6 @@ app.post('/api/register', async (req, res) => {
         res.status(500).json({ success: false, error: 'Internal enrollment failure processing exception context: ' + e.message });
     }
 });
-
 
 // ======================================
 // Login Route delivering Keys
@@ -352,7 +345,6 @@ app.get(
     (req, res) => {
         const userId = req.user.id;
 
-        // Implemented Query 1 here
         const query = `
             SELECT f.id, f.file_name, f.file_size, f.uploaded_at, f.iv,
                    COALESCE(s.wrapped_key, f.wrapped_key) AS wrapped_key,
@@ -393,7 +385,6 @@ app.get(
         const userId = req.user.id;
         const fileId = req.params.id;
 
-        // Implemented Query 2 here (Upgraded f.* to COALESCE for exact wrapped_key handling)
         const query = `
             SELECT f.id, f.file_name, f.file_path, f.file_size, f.iv,
                    COALESCE(s.wrapped_key, f.wrapped_key) AS wrapped_key
@@ -568,10 +559,10 @@ app.get(
 );
 
 // ======================================
-// Start Server
+// SERVER RUN TIME WORKLOAD START
 // ======================================
-const server = app.listen(3000, () => {
-    console.log('Server running cleanly at http://localhost:3000');
+const server = app.listen(PORT, () => {
+    console.log(`Server running cleanly at http://localhost:${PORT}`);
     console.log('Max file upload size capacity verified: 10 GB');
 });
 

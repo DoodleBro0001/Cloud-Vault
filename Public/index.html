@@ -290,33 +290,55 @@ function analyzePasswordStrength(password) {
 }
 
 // =====================================
-// ON PAGE RELOAD RESTORE SESSION
+// ON PAGE RELOAD RESTORE SESSION (Defensive Build)
 // =====================================
 window.onload = async () => {
+    const authSection = document.getElementById('authSection');
+    const vaultSection = document.getElementById('vaultSection');
+    
     const savedUser = localStorage.getItem('loggedInUser');
-    if (savedUser) {
-        try {
-            loggedInUser = JSON.parse(savedUser);
+    const token = localStorage.getItem('token');
 
-            if (!loggedInUser.publicKey || !loggedInUser.encryptedPrivateKey) {
-                throw new Error("Stored session identity lacks core cryptographic components.");
-            }
+    // If no session exists, instantly guarantee the login form is visible
+    if (!savedUser || !token) {
+        authSection.classList.remove('hidden');
+        vaultSection.classList.add('hidden');
+        return;
+    }
 
-            // Restore working keys instantly from session storage parameters
-            userKeys = {
-                publicKey: await importKeyFromJwk(loggedInUser.publicKey, 'public'),
-                privateKey: await importKeyFromJwk(loggedInUser.encryptedPrivateKey, 'private')
-            };
-            
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('vaultSection').classList.remove('hidden');
-            document.getElementById('displayUser').innerText = loggedInUser.username;
-            
-            refreshFiles();
-        } catch (e) {
-            console.error("Session key restoration failed, forcing logout:", e);
-            logout();
+    try {
+        loggedInUser = JSON.parse(savedUser);
+
+        if (!loggedInUser.publicKey || !loggedInUser.encryptedPrivateKey) {
+            throw new Error("Stored session identity lacks core cryptographic components.");
         }
+
+        // Check if crypto helper utilities are loaded before executing
+        if (typeof importKeyFromJwk !== 'function') {
+            throw new Error("Cryptographic engine utility (crypto-logic.js) is not loaded in this context.");
+        }
+
+        // Restore working keys instantly from session storage parameters
+        userKeys = {
+            publicKey: await importKeyFromJwk(loggedInUser.publicKey, 'public'),
+            privateKey: await importKeyFromJwk(loggedInUser.encryptedPrivateKey, 'private')
+        };
+        
+        // Session verified and keys restored successfully: Show Vault
+        authSection.classList.add('hidden');
+        vaultSection.classList.remove('hidden');
+        document.getElementById('displayUser').innerText = loggedInUser.username;
+        
+        refreshFiles();
+    } catch (e) {
+        console.warn("Session restoration bypassed or failed. Clearing invalid storage state:", e);
+        // Clear local storage quietly without triggering a recursive reload loop
+        localStorage.removeItem('token');
+        localStorage.removeItem('loggedInUser');
+        
+        // Force show login UI
+        authSection.classList.remove('hidden');
+        vaultSection.classList.add('hidden');
     }
 };
 
@@ -622,7 +644,7 @@ async function refreshFiles() {
                             data-key="${f.wrapped_key || ''}" 
                             data-iv="${f.iv || ''}" 
                             data-name="${cleanName}">
-                            Download & Decrypt
+                            Download
                         </button>
                         <button class="delete-btn" onclick="deleteFile(${f.id})">
                             Delete
