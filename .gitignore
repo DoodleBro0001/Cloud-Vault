@@ -1,7 +1,7 @@
 
 node_modules/
 .env
-*.db
-*.db-journal
+.env.*
+!.env.example
+secure_vault_v2.db
 Uploads/
-uploads/

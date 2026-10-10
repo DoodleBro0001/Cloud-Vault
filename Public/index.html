@@ -1,712 +1,1552 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>E2EE Secure Vault</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background: #f4f4f4;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Vault - Secure Storage</title>
+  
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        .container {
-            max-width: 700px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+  <style>
+    :root {
+      --bg-main: #f4f7fb;
+      --bg-card: #ffffff;
+      --primary: #1868df;
+      --primary-hover: #1352b5;
+      --primary-light: #eaf2ff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      
+      --color-doc: #3b82f6;
+      --color-img: #a855f7;
+      --color-audio: #f97316;
+      --color-video: #84cc16;
+      --color-other: #94a3b8;
+    }
 
-        input, button, select {
-            padding: 10px;
-            margin: 5px;
-            box-sizing: border-box;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
+    /* AUTHENTICATION SCREEN */
+    #authScreen {
+      display: flex; align-items: center; justify-content: center; min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 20px; overflow-y: auto;
+    }
+    .auth-card {
+      background: #ffffff; width: 100%; max-width: 480px; padding: 36px; border-radius: 20px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    }
+    .auth-brand {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      color: var(--primary); font-weight: 700; font-size: 1.5rem; margin-bottom: 20px;
+    }
+    .auth-tabs { display: flex; background: #f1f5f9; border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+    .auth-tab {
+      flex: 1; text-align: center; padding: 10px; font-size: 0.875rem; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; border-radius: 8px; transition: all 0.2s ease; border: none; background: transparent;
+    }
+    .auth-tab.active { background: #ffffff; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .form-row { display: flex; gap: 12px; }
+    .input-group { margin-bottom: 14px; flex: 1; }
+    .input-group label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+    .input-group input, .input-group select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border-color);
+      border-radius: 8px; outline: none; font-size: 0.875rem; transition: border-color 0.2s;
+    }
+    .input-group input:focus { border-color: var(--primary); }
 
-        th, td {
-            border: 1px solid #ccc;
-            padding: 10px;
-            text-align: left;
-        }
+    /* PASSWORD STRENGTH METER */
+    .strength-meter-container { margin-top: 6px; margin-bottom: 8px; }
+    .strength-meter-bar { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+    .strength-meter-fill { height: 100%; width: 0%; transition: width 0.3s ease, background-color 0.3s ease; }
+    .strength-text { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    .pass-rules { list-style: none; font-size: 0.725rem; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 6px; }
+    .pass-rules li.valid { color: #16a34a; font-weight: 600; }
 
-        th {
-            background: #eee;
-        }
+    .auth-btn {
+      width: 100%; padding: 12px; background: var(--primary); color: white; border: none;
+      border-radius: 10px; font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 10px; transition: background 0.2s;
+    }
+    .auth-btn:hover { background: var(--primary-hover); }
+    .auth-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .auth-error { color: #ef4444; font-size: 0.85rem; text-align: center; margin-top: 12px; display: none; }
+    .auth-success { color: #10b981; font-size: 0.85rem; text-align: center; margin-top: 12px; display: none; }
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
 
-        .hidden {
-            display: none !important;
-        }
+    /* OTP INPUT STYLE */
+    .otp-input {
+      letter-spacing: 8px; text-align: center; font-size: 1.5rem !important; font-weight: 700; color: var(--primary);
+    }
 
-        .delete-btn {
-            background-color: #ff4444;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        .delete-btn:hover {
-            background-color: #cc0000;
-        }
-
-        .progress-container {
-            width: 100%;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            margin: 10px 0;
-            display: none;
-        }
-
-        .progress-bar {
-            width: 0%;
-            height: 30px;
-            background-color: #4CAF50;
-            border-radius: 5px;
-            text-align: center;
-            line-height: 30px;
-            color: white;
-            font-weight: bold;
-        }
-
-        #uploadStatus {
-            margin: 10px 0;
-            font-weight: bold;
-        }
-
-        .form-group label {
-            display: block;
-            margin-top: 6px;
-            font-size: 0.85rem;
-            font-weight: bold;
-            color: #334155;
-        }
-    </style>
+    /* DASHBOARD */
+    #dashboardApp { display: none; height: 100vh; width: 100vw; }
+    .sidebar { width: 250px; background: #ffffff; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; padding: 24px 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; color: var(--primary); font-weight: 700; font-size: 1.25rem; margin-bottom: 32px; padding-left: 8px; }
+    .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .nav-item a { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem; border-radius: 10px; transition: all 0.2s ease; }
+    .nav-item.active a, .nav-item a:hover { background: var(--primary-light); color: var(--primary); }
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+    .top-header { height: 70px; background: #ffffff; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; }
+    .search-box { background: #f1f5f9; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; width: 320px; }
+    .search-box input { border: none; background: transparent; outline: none; width: 100%; font-size: 0.9rem; }
+    .user-profile { display: flex; align-items: center; gap: 16px; }
+    .upload-btn-header { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .logout-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 8px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+    .user-avatar { width: 38px; height: 38px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; text-transform: uppercase; }
+    .content-body { display: flex; gap: 24px; padding: 32px; flex: 1; }
+    .dashboard-main { flex: 1; display: flex; flex-direction: column; gap: 28px; }
+    .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
+    .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; }
+    .cat-card { background: var(--bg-card); border-radius: 14px; padding: 20px; text-align: center; border: 1px solid #f1f5f9; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .cat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; }
+    .files-table-container { background: var(--bg-card); border-radius: 14px; padding: 20px; border: 1px solid #f1f5f9; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; }
+    th { color: var(--text-muted); font-weight: 600; padding: 12px; border-bottom: 1px solid var(--border-color); }
+    td { padding: 14px 12px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .status-CLEAN { background: #dcfce7; color: #15803d; }
+    .status-PENDING { background: #fef9c3; color: #a16207; }
+    .status-INFECTED { background: #fee2e2; color: #b91c1c; }
+    .status-ISSUE { background: #fee2e2; color: #b91c1c; }
+    .stats-panel { width: 320px; background: var(--bg-card); border-radius: 16px; padding: 24px; border: 1px solid #f1f5f9; display: flex; flex-direction: column; align-items: center; }
+    .chart-container { width: 200px; height: 200px; margin: 24px 0; position: relative; }
+    .stats-legend { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+    .legend-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+    .legend-label { display: flex; align-items: center; gap: 8px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .btn-action { background: transparent; border: none; cursor: pointer; padding: 6px; border-radius: 6px; transition: background 0.2s; }
+    .btn-action:hover { background: #f1f5f9; }
+    #fileInput { display: none; }
+    .tab-content { display: none; flex: 1; overflow-y: auto; }
+    .tab-content.active-tab { display: block; }
+    .status-UNAVAILABLE { background: #f1f5f9; color: #64748b; }
+    .status-ERROR { background: #f1f5f9; color: #64748b; }
+    .status-SAFE { background: #dcfce7; color: #15803d; }
+    #shareBtn:not(:disabled) { opacity: 1; }
+    #refreshBtn:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
+    #refreshBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .img-thumb { width:160px;height:120px;border-radius:10px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border-color);font-size:0.75rem;color:var(--text-muted);cursor:pointer;transition:box-shadow 0.2s; }
+    .img-thumb:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  </style>
 </head>
-
 <body>
 
-<div class="container">
-    <h2>🔐 Secure E2EE File Vault</h2>
+  <!-- AUTHENTICATION SCREEN -->
+  <div id="authScreen">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <i data-lucide="cloud"></i>
+        <span>Cloud Vault</span>
+      </div>
+      
+      <div class="auth-tabs" id="authTabsHeader">
+        <button type="button" class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Sign In</button>
+        <button type="button" class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Register</button>
+      </div>
 
-    <div id="authSection">
-        <div class="login-card" style="margin-bottom: 30px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <h3>Login to Account Context</h3>
-            <input type="text" id="username" placeholder="Username" style="width: calc(50% - 12px);">
-            <input type="password" id="password" placeholder="Password" style="width: calc(50% - 12px);">
-            <br>
-            <button onclick="handleLogin()" style="width: 100%; margin-top: 10px; background: #0f172a; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Login</button>
+      <!-- Sign In Form -->
+      <form id="loginForm" class="auth-form active" onsubmit="handleLogin(event)">
+        <div class="input-group">
+          <label for="loginUsername">Username</label>
+          <input type="text" id="loginUsername" placeholder="Enter username" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="auth-btn">Sign In</button>
+      </form>
+
+      <!-- Registration Form -->
+      <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+        <div class="form-row">
+          <div class="input-group">
+            <label for="regFirstName">First Name</label>
+            <input type="text" id="regFirstName" placeholder="John" required>
+          </div>
+          <div class="input-group">
+            <label for="regLastName">Last Name</label>
+            <input type="text" id="regLastName" placeholder="Doe" required>
+          </div>
         </div>
 
-        <div class="registration-card" style="padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <h3>Create Enterprise Identity Profile</h3>
-            <form id="extendedRegisterForm" onsubmit="executeCryptographicRegistration(event)">
-                
-                <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 12px;">
-                    <div style="flex: 1;">
-                        <label>First Name</label>
-                        <input type="text" id="regFirstName" required style="width: 100%;">
-                    </div>
-                    <div style="flex: 1;">
-                        <label>Last Name</label>
-                        <input type="text" id="regLastName" required style="width: 100%;">
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label>Unique System Username</label>
-                    <input type="text" id="regUsername" required placeholder="e.g., jsmith99" style="width: 100%;">
-                </div>
-
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label>Personal Email Address</label>
-                    <input type="email" id="regEmail" required placeholder="name@domain.com" style="width: 100%;">
-                </div>
-
-                <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 12px;">
-                    <div style="width: 30%;">
-                        <label>Region</label>
-                        <select id="regRegionCode" style="width: 100%; height: 40px; margin: 5px 0;">
-                            <option value="US">US (+1)</option>
-                            <option value="LK">LK (+94)</option>
-                            <option value="GB">GB (+44)</option>
-                            <option value="AU">AU (+61)</option>
-                            <option value="IN">IN (+91)</option>
-                        </select>
-                    </div>
-                    <div style="width: 70%;">
-                        <label>Mobile Number</label>
-                        <input type="tel" id="regMobile" required placeholder="771234567" style="width: 100%;">
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label style="font-weight: 600; color: #1e293b;">High-Protection Password</label>
-                    <input type="password" id="regPassword" required 
-                           placeholder="Minimum 10 characters" 
-                           class="form-control" 
-                           style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;"
-                           oninput="analyzePasswordStrength(this.value)">
-                    
-                    <div style="margin-top: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 0.75rem; color: #64748b;">Protection Level:</span>
-                            <span id="strengthLabel" style="font-size: 0.75rem; font-weight: bold; color: #64748b;">None</span>
-                        </div>
-                        <div style="width: 100%; height: 6px; background-color: #e2e8f0; border-radius: 3px; overflow: hidden;">
-                            <div id="strengthBar" style="width: 0%; height: 100%; background-color: #cbd5e1; transition: width 0.3s, background-color 0.3s;"></div>
-                        </div>
-                        <div id="policyFeedback" style="font-size: 0.75rem; margin-top: 6px; line-height: 1.4; color: #64748b;">
-                            Must be at least 10 characters long.
-                        </div>
-                    </div>
-                </div>
-
-                <button type="submit" style="width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
-                    Initialize & Provision Secure E2EE Account
-                </button>
-            </form>
+        <div class="input-group">
+          <label for="regUsername">Username</label>
+          <input type="text" id="regUsername" placeholder="johndoe" required>
         </div>
+
+        <div class="input-group">
+          <label for="regEmail">Email Address</label>
+          <input type="email" id="regEmail" placeholder="john@example.com" required>
+        </div>
+
+        <div class="form-row">
+          <div class="input-group">
+            <label for="regRegion">Region</label>
+            <input type="text" id="regRegion" placeholder="US" maxlength="2" required>
+          </div>
+          <div class="input-group">
+            <label for="regMobile">Mobile Number</label>
+            <input type="tel" id="regMobile" placeholder="+1234567890" required>
+          </div>
+        </div>
+
+        <div class="input-group" style="margin-bottom: 4px;">
+          <label for="regPassword">Password</label>
+          <input type="password" id="regPassword" placeholder="••••••••" oninput="checkPasswordStrength(this.value)" required>
+        </div>
+
+        <div class="strength-meter-container">
+          <div class="strength-meter-bar">
+            <div id="strengthBar" class="strength-meter-fill"></div>
+          </div>
+          <span id="strengthText" class="strength-text">Enter password</span>
+        </div>
+
+        <ul class="pass-rules">
+          <li id="ruleLen">• At least 10 characters</li>
+          <li id="ruleUpper">• Uppercase letter</li>
+          <li id="ruleNum">• Number (0-9)</li>
+          <li id="ruleSpec">• Special character (@#$%)</li>
+        </ul>
+
+        <button type="submit" id="regBtn" class="auth-btn">Send Verification Code</button>
+      </form>
+
+      <!-- Email Verification Form -->
+      <form id="verifyForm" class="auth-form" onsubmit="handleVerifyCode(event)">
+        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-bottom: 16px;">
+          We emailed a 6-digit verification code to <br><strong id="verifyEmailDisplay" style="color: var(--text-main);"></strong>
+        </p>
+        <div class="input-group">
+          <label for="verifyCode">Enter Verification Code</label>
+          <input type="text" id="verifyCode" class="otp-input" maxlength="6" placeholder="000000" required>
+        </div>
+        <button type="submit" id="verifyBtn" class="auth-btn">Verify Code & Complete Account</button>
+        <p style="text-align: center; margin-top: 14px; font-size: 0.8rem;">
+          <a href="#" onclick="switchAuthTab('register')" style="color: var(--primary); text-decoration: none; font-weight: 600;">← Back to Registration</a>
+        </p>
+      </form>
+
+      <div class="auth-error" id="authError">An error occurred</div>
+      <div class="auth-success" id="authSuccess">Operation successful!</div>
     </div>
+  </div>
 
-    <div id="vaultSection" class="hidden">
-        <h3>Welcome, <span id="displayUser"></span></h3>
-        <button onclick="logout()">Logout</button>
-        <hr>
+  <!-- DASHBOARD APP -->
+  <!-- DASHBOARD APP -->
+  <div id="dashboardApp">
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <i data-lucide="cloud"></i>
+          <span>Cloud Vault</span>
+        </div>
+        <ul class="nav-menu">
+          <li class="nav-item active" id="nav-home"><a href="#" onclick="switchTab('home')"><i data-lucide="home"></i> Home</a></li>
+          <li class="nav-item" id="nav-myfiles"><a href="#" onclick="switchTab('myfiles')"><i data-lucide="folder"></i> My Files</a></li>
+          <li class="nav-item" id="nav-documents"><a href="#" onclick="switchTab('documents')"><i data-lucide="file-text"></i> Documents</a></li>
+          <li class="nav-item" id="nav-images"><a href="#" onclick="switchTab('images')"><i data-lucide="image"></i> Images</a></li>
+          <li class="nav-item" id="nav-shared"><a href="#" onclick="switchTab('shared')"><i data-lucide="share-2"></i> Shared</a></li>
+        </ul>
+      </div>
+    </aside>
 
-        <input type="file" id="filePicker">
-        <button onclick="removeSelectedFile()">Remove Selected File</button>
-        <button onclick="handleUpload()" id="uploadBtn">Upload Encrypted File</button>
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div class="search-box">
+          <i data-lucide="search" style="color: var(--text-muted)"></i>
+          <input type="text" id="searchInput" placeholder="Search files..." oninput="filterFiles(this.value)">
+        </div>
+        <!-- refresh moved to user-profile area below -->
+        <div class="user-profile">
+          <input type="file" id="fileInput" onchange="uploadSelectedFile(event)">
+          <button class="upload-btn-header" onclick="document.getElementById('fileInput').click()">
+            <i data-lucide="upload-cloud"></i> Upload
+          </button>
+          <button onclick="refreshDashboard()" id="refreshBtn" title="Refresh files" style="display:flex;align-items:center;gap:5px;padding:8px 13px;border:1px solid var(--border-color);border-radius:8px;background:#f8fafc;color:var(--text-muted);font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.color='var(--primary)';this.style.borderColor='var(--primary)';" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border-color)';">
+            <i data-lucide="refresh-cw" id="refreshIcon" style="width:14px;height:14px;"></i> Refresh
+          </button>
+          <div style="position:relative;">
+            <div class="user-avatar" id="avatarInitial" onclick="toggleProfileMenu()" style="cursor:pointer;">U</div>
+            <div id="profileMenu" style="display:none; position:absolute; right:0; top:48px; background:#fff; border:1px solid var(--border-color); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.12); width:220px; z-index:999; padding:8px 0;">
+              <div style="padding:14px 16px; border-bottom:1px solid var(--border-color);">
+                <div style="font-weight:700; font-size:0.95rem;" id="profileMenuName">-</div>
+                <div style="font-size:0.78rem; color:var(--text-muted);" id="profileMenuUsername">-</div>
+              </div>
+              <a href="#" onclick="showProfileDetails()" style="display:flex;align-items:center;gap:10px;padding:11px 16px;text-decoration:none;color:var(--text-main);font-size:0.875rem;font-weight:600;">
+                <i data-lucide="user" style="width:16px;height:16px;"></i> My Profile
+              </a>
+              <a href="#" onclick="handleLogout()" style="display:flex;align-items:center;gap:10px;padding:11px 16px;text-decoration:none;color:#ef4444;font-size:0.875rem;font-weight:600;">
+                <i data-lucide="log-out" style="width:16px;height:16px;"></i> Logout
+              </a>
+            </div>
+          </div>
+        </div>
+      </header>
 
-        <div id="uploadStatus"></div>
-        
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar" id="progressBar">0%</div>
+      <!-- HOME TAB -->
+      <div id="tab-home" class="tab-content active-tab">
+        <div class="content-body">
+          <main class="dashboard-main">
+            <section>
+              <h2 class="section-title">Storage Overview</h2>
+              <div class="category-grid">
+                <div class="cat-card" onclick="switchTab('documents')" style="cursor:pointer;">
+                  <div class="cat-icon" style="background:#eff6ff;color:var(--color-doc)"><i data-lucide="file-text"></i></div>
+                  <div class="cat-title" id="cnt-doc">0 Documents</div>
+                  <div class="cat-size" id="size-doc">0 KB</div>
+                </div>
+                <div class="cat-card" onclick="switchTab('images')" style="cursor:pointer;">
+                  <div class="cat-icon" style="background:#f3e8ff;color:var(--color-img)"><i data-lucide="image"></i></div>
+                  <div class="cat-title" id="cnt-img">0 Images</div>
+                  <div class="cat-size" id="size-img">0 MB</div>
+                </div>
+                <div class="cat-card">
+                  <div class="cat-icon" style="background:#fff7ed;color:var(--color-audio)"><i data-lucide="music"></i></div>
+                  <div class="cat-title" id="cnt-audio">0 Audios</div>
+                  <div class="cat-size" id="size-audio">0 MB</div>
+                </div>
+                <div class="cat-card">
+                  <div class="cat-icon" style="background:#f7fee7;color:var(--color-video)"><i data-lucide="video"></i></div>
+                  <div class="cat-title" id="cnt-video">0 Videos</div>
+                  <div class="cat-size" id="size-video">0 MB</div>
+                </div>
+                <div class="cat-card">
+                  <div class="cat-icon" style="background:#f1f5f9;color:var(--color-other)"><i data-lucide="folder"></i></div>
+                  <div class="cat-title" id="cnt-other">0 Others</div>
+                  <div class="cat-size" id="size-other">0 MB</div>
+                </div>
+              </div>
+            </section>
+            <section>
+              <h2 class="section-title">Recent Files</h2>
+              <div class="files-table-container">
+                <table><thead><tr><th>File Name</th><th>Size</th><th>Date Uploaded</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="fileListBody"><tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Loading...</td></tr></tbody></table>
+              </div>
+            </section>
+          </main>
+          <aside class="stats-panel">
+            <h3 class="section-title" style="width:100%;">Storage Stats</h3>
+            <div class="chart-container"><canvas id="storageChart"></canvas></div>
+            <div class="stats-legend">
+              <div class="legend-item"><span class="legend-label"><span class="legend-dot" style="background:var(--color-doc)"></span>Documents</span><span id="leg-doc">0 KB</span></div>
+              <div class="legend-item"><span class="legend-label"><span class="legend-dot" style="background:var(--color-img)"></span>Images</span><span id="leg-img">0 MB</span></div>
+              <div class="legend-item"><span class="legend-label"><span class="legend-dot" style="background:var(--color-audio)"></span>Audios</span><span id="leg-audio">0 MB</span></div>
+              <div class="legend-item"><span class="legend-label"><span class="legend-dot" style="background:var(--color-video)"></span>Videos</span><span id="leg-video">0 MB</span></div>
+              <div class="legend-item"><span class="legend-label"><span class="legend-dot" style="background:var(--color-other)"></span>Others</span><span id="leg-other">0 MB</span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- MY FILES TAB -->
+      <div id="tab-myfiles" class="tab-content">
+        <div style="padding:32px;">
+          <h2 class="section-title">My Files</h2>
+          <div class="files-table-container">
+            <table><thead><tr><th>File Name</th><th>Size</th><th>Date Uploaded</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="myFilesBody"><tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Loading...</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCUMENTS TAB -->
+      <div id="tab-documents" class="tab-content">
+        <div style="padding:32px;">
+          <h2 class="section-title">Documents</h2>
+          <div class="files-table-container">
+            <table><thead><tr><th>File Name</th><th>Size</th><th>Date Uploaded</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="documentsBody"><tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No documents found.</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- IMAGES TAB -->
+      <div id="tab-images" class="tab-content">
+        <div style="padding:32px;">
+          <h2 class="section-title">Images</h2>
+          <div id="imageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;">
+            <p style="color:var(--text-muted);">No images found.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHARED TAB -->
+      <div id="tab-shared" class="tab-content">
+        <div style="padding:32px;display:flex;flex-direction:column;gap:32px;">
+          <div>
+            <h2 class="section-title">📤 Files I Shared</h2>
+            <div class="files-table-container">
+              <table>
+                <thead><tr><th>File Name</th><th>Shared With</th><th>Type</th><th>Size</th><th>Scan</th><th>Shared At</th><th>Actions</th></tr></thead>
+                <tbody id="sentSharesBody"><tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No files shared by you.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h2 class="section-title">📥 Files Shared With Me</h2>
+            <div class="files-table-container">
+              <table>
+                <thead><tr><th>File Name</th><th>Sent By</th><th>Original Owner</th><th>Type</th><th>Size</th><th>Scan</th><th>Received At</th><th>Actions</th></tr></thead>
+                <tbody id="receivedSharesBody"><tr><td colspan="8" style="text-align:center;color:var(--text-muted);">No files received.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SHARE MODAL -->
+  <div id="shareModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:32px;width:440px;box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h3 style="font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:8px;"><i data-lucide="share-2" style="width:18px;height:18px;color:var(--primary);"></i> Share File</h3>
+        <button onclick="closeShareModal()" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--text-muted);">✕</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <div>
+          <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Select File to Share</label>
+          <select id="shareFileSelect" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.875rem;outline:none;">
+            <option value="">-- Select a file --</option>
+          </select>
         </div>
 
-        <hr>
-        <h3>Your Files</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>File Name</th>
-                    <th>Size</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="fileList"></tbody>
-        </table>
+        <div>
+          <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">Recipient Username</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="shareUsernameInput" placeholder="Enter username" style="flex:1;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.875rem;outline:none;">
+            <button onclick="verifyShareRecipient()" style="background:var(--primary);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.875rem;white-space:nowrap;">Verify</button>
+          </div>
+        </div>
+
+        <div id="shareUserVerified" style="display:none;align-items:center;gap:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;">
+          <i data-lucide="check-circle" style="width:18px;height:18px;color:#16a34a;"></i>
+          <span style="font-size:0.875rem;font-weight:600;color:#15803d;">Sharing with: <span id="shareVerifiedName"></span></span>
+        </div>
+
+        <div id="shareStatus" style="font-size:0.85rem;min-height:18px;"></div>
+
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button onclick="closeShareModal()" style="flex:1;padding:11px;border:1px solid var(--border-color);border-radius:8px;background:#fff;font-weight:600;cursor:pointer;color:var(--text-muted);">Cancel</button>
+          <button id="shareBtn" onclick="confirmShare()" disabled style="flex:1;padding:11px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-weight:600;cursor:pointer;opacity:0.6;">Share File</button>
+        </div>
+
+      </div>
     </div>
-</div>
+  </div>
 
-<script src="crypto-logic.js"></script>
+  <!-- PROFILE MODAL -->
+  <div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:32px;width:380px;box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h3 style="font-size:1.1rem;font-weight:700;">My Profile</h3>
+        <button onclick="closeProfileModal()" style="background:none;border:none;cursor:pointer;font-size:1.2rem;">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;" id="profileModalAvatar">U</div>
+          <div>
+            <div style="font-weight:700;font-size:1rem;" id="profileModalFullName">-</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);" id="profileModalRole">-</div>
+          </div>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;font-size:0.875rem;">
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);font-weight:600;">Username</span><span id="profileModalUsername">-</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);font-weight:600;">Email</span><span id="profileModalEmail">-</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);font-weight:600;">Region</span><span id="profileModalRegion">-</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);font-weight:600;">Member Since</span><span id="profileModalSince">-</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<script>
-let userKeys = null;
-let loggedInUser = null;
+  <script src="crypto-logic.js"></script>
+  <script>
+    lucide.createIcons();
 
-// =====================================
-// HELPER: Format File Size
-// =====================================
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-}
+    let pendingRegistrationEmail = '';
 
-// =====================================
-// PASSWORD POLICY STRENGTH ANALYZER ENGINE
-// =====================================
-function analyzePasswordStrength(password) {
-    const bar = document.getElementById('strengthBar');
-    const label = document.getElementById('strengthLabel');
-    const feedback = document.getElementById('policyFeedback');
-    
-    if (!password || password.length === 0) {
-        bar.style.width = '0%';
-        bar.style.backgroundColor = '#cbd5e1';
-        label.textContent = 'None';
-        label.style.color = '#64748b';
-        feedback.textContent = 'Must be at least 10 characters long.';
-        feedback.style.color = '#64748b';
+    // The real KeyVault (with unlock/lock/isUnlocked/encryptFileForUpload/
+    // decryptDownloadedFile) comes from crypto-logic.js, loaded via
+    // <script src="crypto-logic.js"> before this inline script runs.
+    // A duplicate `const KeyVault = ...` stub used to be declared right here,
+    // which -- because each <script> tag gets its own top-level scope for
+    // const/let -- silently shadowed the real one for this entire script,
+    // including every login/upload/download call below. That stub only had
+    // an unlock()/getPrivateKey() pair and referenced an undefined `result`
+    // variable, which is exactly what caused "result is not defined" and
+    // would also have broken upload/download with "not a function" errors
+    // once that specific bug was fixed. Do not redeclare KeyVault here.
+
+    // CRYPTOGRAPHY UTILITIES (RSA-OAEP & AES-GCM)
+    async function generateRSAKeyPair() {
+      return await window.crypto.subtle.generateKey(
+        { name: "RSA-OAEP", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+        true, ["encrypt", "decrypt"]
+      );
+    }
+
+    async function exportPublicKey(key) {
+      const exported = await window.crypto.subtle.exportKey("spki", key);
+      return btoa(String.fromCharCode(...new Uint8Array(exported)));
+    }
+
+    async function importPublicKey(pemKey) {
+      const binaryDer = Uint8Array.from(atob(pemKey), c => c.charCodeAt(0));
+      return await window.crypto.subtle.importKey(
+        "spki", binaryDer.buffer, { name: "RSA-OAEP", hash: "SHA-256" }, true, ["encrypt"]
+      );
+    }
+
+    async function importPrivateKey(pemKey) {
+      const binaryDer = Uint8Array.from(atob(pemKey), c => c.charCodeAt(0));
+      return await window.crypto.subtle.importKey(
+        "pkcs8", binaryDer.buffer, { name: "RSA-OAEP", hash: "SHA-256" }, true, ["decrypt"]
+      );
+    }
+
+    async function generateAESKey() {
+      return await window.crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+    }
+
+    async function exportAESKey(key) {
+      const exported = await window.crypto.subtle.exportKey("raw", key);
+      return btoa(String.fromCharCode(...new Uint8Array(exported)));
+    }
+
+    async function importAESKey(rawBase64) {
+      const binaryKey = Uint8Array.from(atob(rawBase64), c => c.charCodeAt(0));
+      return await window.crypto.subtle.importKey("raw", binaryKey.buffer, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]);
+    }
+
+    async function encryptAESKeyWithRSA(aesKeyRawBase64, rsaPublicKeyPem) {
+      const rsaPubKey = await importPublicKey(rsaPublicKeyPem);
+      const encoder = new TextEncoder();
+      const encrypted = await window.crypto.subtle.encrypt({ name: "RSA-OAEP" }, rsaPubKey, encoder.encode(aesKeyRawBase64));
+      return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+    }
+
+    // AUTH TAB NAVIGATION & PASSWORD VALIDATION
+    function switchAuthTab(type) {
+      document.getElementById('authError').style.display = 'none';
+      document.getElementById('authSuccess').style.display = 'none';
+      document.getElementById('authTabsHeader').style.display = 'flex';
+
+      document.getElementById('loginForm').classList.remove('active');
+      document.getElementById('registerForm').classList.remove('active');
+      document.getElementById('verifyForm').classList.remove('active');
+
+      if (type === 'login') {
+        document.getElementById('loginForm').classList.add('active');
+        document.getElementById('tabLogin').classList.add('active');
+        document.getElementById('tabRegister').classList.remove('active');
+      } else if (type === 'register') {
+        document.getElementById('registerForm').classList.add('active');
+        document.getElementById('tabRegister').classList.add('active');
+        document.getElementById('tabLogin').classList.remove('active');
+      } else if (type === 'verify') {
+        document.getElementById('authTabsHeader').style.display = 'none';
+        document.getElementById('verifyForm').classList.add('active');
+      }
+    }
+
+    let isPasswordStrong = false;
+    function checkPasswordStrength(val) {
+      const bar = document.getElementById('strengthBar');
+      const text = document.getElementById('strengthText');
+
+      const hasLen = val.length >= 10;
+      const hasUpper = /[A-Z]/.test(val);
+      const hasNum = /[0-9]/.test(val);
+      const hasSpec = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val);
+
+      document.getElementById('ruleLen').classList.toggle('valid', hasLen);
+      document.getElementById('ruleUpper').classList.toggle('valid', hasUpper);
+      document.getElementById('ruleNum').classList.toggle('valid', hasNum);
+      document.getElementById('ruleSpec').classList.toggle('valid', hasSpec);
+
+      let score = (hasLen ? 1 : 0) + (hasUpper ? 1 : 0) + (hasNum ? 1 : 0) + (hasSpec ? 1 : 0);
+
+      if (val.length === 0) {
+        bar.style.width = '0%'; bar.style.backgroundColor = '#e2e8f0';
+        text.innerText = 'Enter password'; text.style.color = 'var(--text-muted)';
+        isPasswordStrong = false;
+      } else if (score < 2 || !hasLen) {
+        bar.style.width = '25%'; bar.style.backgroundColor = '#ef4444';
+        text.innerText = 'Weak (Must be 10+ chars)'; text.style.color = '#ef4444';
+        isPasswordStrong = false;
+      } else if (score < 4) {
+        bar.style.width = '65%'; bar.style.backgroundColor = '#f59e0b';
+        text.innerText = 'Medium Strength'; text.style.color = '#f59e0b';
+        isPasswordStrong = false;
+      } else {
+        bar.style.width = '100%'; bar.style.backgroundColor = '#10b981';
+        text.innerText = 'Strong Password'; text.style.color = '#10b981';
+        isPasswordStrong = true;
+      }
+    }
+
+    // SERVER LINK: 1. REGISTER ENDPOINT (SENDS 6-DIGIT CODE)
+    async function handleRegister(e) {
+      e.preventDefault();
+      const errorEl = document.getElementById('authError');
+      const successEl = document.getElementById('authSuccess');
+      const btn = document.getElementById('regBtn');
+
+      errorEl.style.display = 'none'; 
+      successEl.style.display = 'none';
+
+      if (!isPasswordStrong) {
+        errorEl.innerText = 'Please satisfy all password requirements (10+ characters).';
+        errorEl.style.display = 'block'; 
         return;
-    }
+      }
 
-    let score = 0;
-    let missingCriteria = [];
+      btn.disabled = true;
+      btn.innerText = 'Generating Keys & Sending Code...';
 
-    // Validation rule matrix
-    if (password.length >= 10) score += 1; else missingCriteria.push("10+ characters");
-    if (/[A-Z]/.test(password)) score += 1; else missingCriteria.push("uppercase letter");
-    if (/[a-z]/.test(password)) score += 1; else missingCriteria.push("lowercase letter");
-    if (/[0-9]/.test(password)) score += 1; else missingCriteria.push("number");
-    if (/[@$!%*?&]/.test(password)) score += 1; else missingCriteria.push("special symbol (@$!%*?&)");
+      try {
+        // FIXED: previously generated PEM keys via generateRSAKeyPair() and
+        // stored the raw private key in plaintext in localStorage, while
+        // sending the server a literal placeholder string "CLIENT_DERIVED_KEY"
+        // instead of a real encrypted key. That meant KeyVault.unlock() at
+        // login time (which expects a real password-encrypted JWK payload)
+        // could never succeed for any account created this way. This now
+        // uses the same JWK + PBKDF2 + AES-GCM scheme that login already
+        // expects and that KeyVault.unlock() already correctly handles.
+        // Replace from: const kek = await deriveKeyFromPassword(...)
+// Down to:      encryptedPrivateKey: encryptedPrivateKeyPayload
+// With this:
 
-    // Convert internal score calculations into visual elements using flat conditions
-    // This removes the case 0 structural confusion crashing VS Code's language tokenizer
-    if (score === 0) {
-        bar.style.width = '0%';
-        bar.style.backgroundColor = '#cbd5e1';
-        label.textContent = 'None';
-        label.style.color = '#64748b';
-    } else if (score === 1 || score === 2) {
-        bar.style.width = '25%';
-        bar.style.backgroundColor = '#ef4444'; // Red
-        label.textContent = 'Weak / Vulnerable';
-        label.style.color = '#ef4444';
-    } else if (score === 3) {
-        bar.style.width = '50%';
-        bar.style.backgroundColor = '#f59e0b'; // Orange
-        label.textContent = 'Medium / Moderate';
-        label.style.color = '#f59e0b';
-    } else if (score === 4) {
-        bar.style.width = '75%';
-        bar.style.backgroundColor = '#3b82f6'; // Blue
-        label.textContent = 'Strong Protection';
-        label.style.color = '#3b82f6';
-    } else if (score === 5) {
-        bar.style.width = '100%';
-        bar.style.backgroundColor = '#10b981'; // Emerald Green
-        label.textContent = 'Enterprise Grade Elite';
-        label.style.color = '#10b981';
-    }
+const keys = await generateUserKeys();
+const password = document.getElementById('regPassword').value;
+pendingRegistrationEmail = document.getElementById('regEmail').value.trim();
+const username = document.getElementById('regUsername').value.trim();
 
-    // Process output feedback string layout array
-    if (missingCriteria.length > 0) {
-        feedback.textContent = "Required adjustments: Add " + missingCriteria.join(', ') + ".";
-        feedback.style.color = '#b45309'; // Warning Amber tint
-    } else {
-        feedback.textContent = "Security policy parameters completely satisfied.";
-        feedback.style.color = '#047857'; // Success Green tint
-    }
-}
+const publicKeyJwk = await exportKeyToJwk(keys.publicKey);
+const privateKeyJwk = await exportKeyToJwk(keys.privateKey);
+const encryptedPrivateKeyPayload = await encryptPrivateKeyLocal(
+    JSON.stringify(privateKeyJwk),
+    password   // <-- pass password, not kek
+);
 
-// =====================================
-// ON PAGE RELOAD RESTORE SESSION (Defensive Build)
-// =====================================
-window.onload = async () => {
-    const authSection = document.getElementById('authSection');
-    const vaultSection = document.getElementById('vaultSection');
-    
-    const savedUser = localStorage.getItem('loggedInUser');
-    const token = localStorage.getItem('token');
-
-    // If no session exists, instantly guarantee the login form is visible
-    if (!savedUser || !token) {
-        authSection.classList.remove('hidden');
-        vaultSection.classList.add('hidden');
-        return;
-    }
-
-    try {
-        loggedInUser = JSON.parse(savedUser);
-
-        if (!loggedInUser.publicKey || !loggedInUser.encryptedPrivateKey) {
-            throw new Error("Stored session identity lacks core cryptographic components.");
-        }
-
-        // Check if crypto helper utilities are loaded before executing
-        if (typeof importKeyFromJwk !== 'function') {
-            throw new Error("Cryptographic engine utility (crypto-logic.js) is not loaded in this context.");
-        }
-
-        // Restore working keys instantly from session storage parameters
-        userKeys = {
-            publicKey: await importKeyFromJwk(loggedInUser.publicKey, 'public'),
-            privateKey: await importKeyFromJwk(loggedInUser.encryptedPrivateKey, 'private')
-        };
-        
-        // Session verified and keys restored successfully: Show Vault
-        authSection.classList.add('hidden');
-        vaultSection.classList.remove('hidden');
-        document.getElementById('displayUser').innerText = loggedInUser.username;
-        
-        refreshFiles();
-    } catch (e) {
-        console.warn("Session restoration bypassed or failed. Clearing invalid storage state:", e);
-        // Clear local storage quietly without triggering a recursive reload loop
-        localStorage.removeItem('token');
-        localStorage.removeItem('loggedInUser');
-        
-        // Force show login UI
-        authSection.classList.remove('hidden');
-        vaultSection.classList.add('hidden');
-    }
+const payload = {
+    username: username,
+    first_name: document.getElementById('regFirstName').value.trim(),
+    last_name: document.getElementById('regLastName').value.trim(),
+    personal_email: pendingRegistrationEmail,
+    mobile_number: document.getElementById('regMobile').value.trim(),
+    region_code: document.getElementById('regRegion').value.trim(),
+    password: password,
+    publicKey: JSON.stringify(publicKeyJwk),
+    encryptedPrivateKey: encryptedPrivateKeyPayload
 };
-
-// =====================================
-// EXTENDED CRYPTOGRAPHIC REGISTRATION PIPELINE
-// =====================================
-async function executeCryptographicRegistration(event) {
-    event.preventDefault(); // Lock down explicit native form actions
-
-    const firstName = document.getElementById('regFirstName').value.trim();
-    const lastName = document.getElementById('regLastName').value.trim();
-    const username = document.getElementById('regUsername').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const regionCode = document.getElementById('regRegionCode').value;
-    const mobileNumber = document.getElementById('regMobile').value.trim();
-    const password = document.getElementById('regPassword').value;
-
-    // Frontend validation enforcement rule check block
-    if (password.length < 10) {
-        alert("Security Policy Violation: Password length must be at least 10 characters.");
-        return;
-    }
-
-    try {
-        // 1. Generate clean, isolated keys for this account context
-        const newKeys = await generateUserKeys();
-        
-        // 2. Stringify them for secure transit structure
-        const publicKeyString = await exportKeyToJwk(newKeys.publicKey);
-        const privateKeyString = await exportKeyToJwk(newKeys.privateKey); 
-
-        // 3. Dispatch metadata verification blocks paired alongside public materials
-        const res = await fetch('http://localhost:3000/api/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                username, 
-                password,
-                first_name: firstName,
-                last_name: lastName,
-                personal_email: email,
-                mobile_number: mobileNumber,
-                region_code: regionCode,
-                publicKey: publicKeyString, 
-                encryptedPrivateKey: privateKeyString 
-            })
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
 
         const data = await res.json();
+
         if (data.success) {
-            alert('Registration fully successful. System workspace configured. Please login.');
-            document.getElementById('extendedRegisterForm').reset();
-            analyzePasswordStrength(''); // Reset structural strength visualizers to neutral
+          document.getElementById('verifyEmailDisplay').innerText = pendingRegistrationEmail;
+          switchAuthTab('verify');
+          successEl.innerText = data.message || 'Verification code sent to your email!';
+          successEl.style.display = 'block';
         } else {
-            alert(data.error || 'Registration failed');
+          errorEl.innerText = data.error || 'Registration failed.';
+          errorEl.style.display = 'block';
         }
-    } catch (error) {
-        console.error('Registration structural fault sequence:', error);
-        alert('Registration execution failed pipeline: ' + error.message);
+      } catch (err) {
+        errorEl.innerText = 'Server error during registration. Check server log.';
+        errorEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Send Verification Code';
+      }
     }
-}
 
-// =====================================
-// PERSISTENT LOGIN PIPELINE
-// =====================================
-async function handleLogin() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
+    // SERVER LINK: 2. VERIFY CODE ENDPOINT
+    async function handleVerifyCode(e) {
+      e.preventDefault();
+      const errorEl = document.getElementById('authError');
+      const successEl = document.getElementById('authSuccess');
+      const btn = document.getElementById('verifyBtn');
 
-    if (!username || !password) {
-        alert('Username and password parameters required');
+      errorEl.style.display = 'none';
+      successEl.style.display = 'none';
+
+      const code = document.getElementById('verifyCode').value.trim();
+
+      if (code.length !== 6) {
+        errorEl.innerText = 'Please enter a valid 6-digit code.';
+        errorEl.style.display = 'block';
         return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'Verifying Code...';
+
+      try {
+        const res = await fetch('/api/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendingRegistrationEmail, code })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          successEl.innerText = data.message || 'Account registered successfully! Redirecting to sign in...';
+          successEl.style.display = 'block';
+          setTimeout(() => {
+            document.getElementById('loginUsername').value = document.getElementById('regUsername').value;
+            switchAuthTab('login');
+          }, 1800);
+        } else {
+          errorEl.innerText = data.error || 'Invalid verification code.';
+          errorEl.style.display = 'block';
+        }
+      } catch (err) {
+        errorEl.innerText = 'Verification failed. Server unreachable.';
+        errorEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Verify Code & Complete Account';
+      }
     }
+
+    // SERVER LINK: 3. LOGIN ENDPOINT
+    async function handleLogin(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('authError');
+    errorEl.style.display = 'none';
+
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
 
     try {
-        const res = await fetch('http://localhost:3000/api/login', {
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
 
-        const data = await res.json();
+        const data = await response.json();
 
-        if (!data.success) {
-            alert(data.error || 'Login failed');
-            return;
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Login failed');
         }
 
         localStorage.setItem('token', data.token);
-        localStorage.setItem('loggedInUser', JSON.stringify(data.user));
-        loggedInUser = data.user;
+        localStorage.setItem('username', data.user.username.trim().toLowerCase());
 
-        // Reconstruct user keys instantly from database delivery payload
-        userKeys = {
-            publicKey: await importKeyFromJwk(data.user.publicKey, 'public'),
-            privateKey: await importKeyFromJwk(data.user.encryptedPrivateKey, 'private')
-        };
+        await KeyVault.unlock(
+            password,
+            data.user.encryptedPrivateKey,
+            data.user.publicKey
+        );
 
-        document.getElementById('authSection').classList.add('hidden');
-        document.getElementById('vaultSection').classList.remove('hidden');
-        document.getElementById('displayUser').innerText = loggedInUser.username;
+        showDashboard(data.user.username);
 
-        refreshFiles();
     } catch (error) {
-        console.error('Login engine error:', error);
-        alert('Authentication process exception: ' + error.message);
+        console.error('LOGIN ERROR:', error);
+        errorEl.innerText = error.message;
+        errorEl.style.display = 'block';
     }
 }
+    // SERVER LINK: ENCRYPTED FILE UPLOAD ENDPOINT
+    async function uploadSelectedFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
 
-// =====================================
-// LOGOUT
-// =====================================
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('loggedInUser');
-    location.reload();
-}
+      const token = localStorage.getItem('token');
 
-// =====================================
-// UPLOAD FILE WITH PROGRESS
-// =====================================
-async function handleUpload() {
-    if (!loggedInUser || !userKeys) {
-        alert('Please log in before running asset transfers');
+      if (!KeyVault.isUnlocked()) {
+        alert('Vault is locked. Please log in again before uploading.');
         return;
-    }
+      }
 
-    const file = document.getElementById('filePicker').files[0];
-    if (!file) {
-        alert('Select a file to encrypt and upload');
-        return;
-    }
+      try {
+        // FIXED: previously used a separate ad-hoc AES/RSA-PEM scheme
+        // (generateAESKey/encryptAESKeyWithRSA against a plaintext PEM key
+        // pulled from localStorage) that had no connection to the real,
+        // password-protected KeyVault used at login. Now uses the same
+        // KeyVault the rest of the app actually relies on.
+        const { blob, wrappedKey, iv } = await KeyVault.encryptFileForUpload(file);
 
-    const uploadBtn = document.getElementById('uploadBtn');
-    const statusDiv = document.getElementById('uploadStatus');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-
-    try {
-        uploadBtn.disabled = true;
-        uploadBtn.textContent = 'Uploading...';
-
-        statusDiv.textContent = `Encrypting ${file.name} (${formatFileSize(file.size)})...`;
-        statusDiv.style.color = 'blue';
-
-        if (typeof encryptFile !== 'function') {
-            throw new Error('encryptFile utility functionality is missing from context logic storage.');
-        }
-
-        const { blob, wrappedKey, iv } = await encryptFile(file, userKeys.publicKey);
-
-        statusDiv.textContent = 'File encrypted. Uploading securely to vault array...';
-
+        const encryptedFile = new File([blob], file.name, { type: 'application/octet-stream' });
         const formData = new FormData();
-        formData.append('file', blob);
+        formData.append('file', encryptedFile);
         formData.append('fileName', file.name);
         formData.append('wrappedKey', wrappedKey);
         formData.append('iv', iv);
 
-        const token = localStorage.getItem('token');
-
-        progressContainer.style.display = 'block';
-        progressBar.style.width = '0%';
-        progressBar.textContent = '0%';
-
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                progressBar.style.width = percentComplete + '%';
-                progressBar.textContent = Math.round(percentComplete) + '%';
-            }
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
         });
 
-        xhr.addEventListener('load', () => {
-            try {
-                if (xhr.status === 200) {
-                    const data = JSON.parse(xhr.responseText);
-                    if (data.success) {
-                        statusDiv.textContent = 'Upload completely successful!';
-                        statusDiv.style.color = 'green';
-                        document.getElementById('filePicker').value = '';
-                        refreshFiles();
-                        setTimeout(() => {
-                            statusDiv.textContent = '';
-                            progressContainer.style.display = 'none';
-                        }, 3000);
-                    } else {
-                        throw new Error(data.error || 'Upload backend rejected parameters.');
-                    }
-                } else {
-                    throw new Error('Upload server returned status code flag: ' + xhr.status);
-                }
-            } catch (innerError) {
-                statusDiv.textContent = 'Processing error: ' + innerError.message;
-                statusDiv.style.color = 'red';
-            } finally {
-                uploadBtn.disabled = false;
-                uploadBtn.textContent = 'Upload Encrypted File';
-            }
-        });
-
-        xhr.addEventListener('error', () => {
-            statusDiv.textContent = 'Network execution interface block stopped data pipeline.';
-            statusDiv.style.color = 'red';
-            uploadBtn.disabled = false;
-            uploadBtn.textContent = 'Upload Encrypted File';
-        });
-
-        xhr.open('POST', 'http://localhost:3000/api/upload');
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        xhr.send(formData);
-
-    } catch (error) {
-        console.error('Upload handling crash sequence:', error);
-        statusDiv.textContent = 'Upload failed: ' + error.message;
-        statusDiv.style.color = 'red';
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = 'Upload Encrypted File';
+        const data = await res.json();
+        if (data.success) {
+          alert('Encrypted file uploaded successfully!');
+          loadFiles();
+        } else {
+          alert('Upload failed: ' + data.error);
+        }
+      } catch (e) {
+        console.error('Upload error:', e);
+        alert('Encryption or upload failed: ' + e.message);
+      }
     }
+
+    // Removed: the old decryptFileLocally() called KeyVault.getPrivateKey(),
+    // a method that never existed on KeyVault, and fell back to a plaintext
+    // PEM key in localStorage that login never populated. Download now uses
+    // KeyVault.decryptDownloadedFile() directly (see onDownloadClick below),
+    // the same tested path used for the crypto round-trip that already works.
+
+    // DOWNLOAD HANDLER INTEGRATED
+    async function onDownloadClick(fileId, originalFileName) {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Authentication token missing. Please log in again.');
+                window.location.href = '/login.html';
+                return;
+            }
+
+            if (!KeyVault.isUnlocked()) {
+                alert('Vault is locked. Please log in again to download files.');
+                return;
+            }
+
+            const response = await fetch(`/api/download/${fileId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Failed to download file.');
+            }
+
+            const wrappedKey = response.headers.get('X-Wrapped-Key');
+            const ivBase64 = response.headers.get('X-IV');
+            const encryptedFileBuffer = await response.arrayBuffer();
+
+            if (!wrappedKey || !ivBase64) {
+                throw new Error('Encryption metadata (Wrapped Key or IV) missing from server response.');
+            }
+
+            const decryptedPlaintextBuffer = await KeyVault.decryptDownloadedFile(
+                encryptedFileBuffer,
+                wrappedKey,
+                ivBase64
+            );
+
+            const blob = new Blob([decryptedPlaintextBuffer]);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            
+            const anchor = document.createElement('a');
+            anchor.href = downloadUrl;
+            anchor.download = originalFileName || 'secure_file';
+            document.body.appendChild(anchor);
+            anchor.click();
+            
+            anchor.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+
+            console.log('✅ File downloaded and decrypted successfully.');
+        } catch (error) {
+            console.error('❌ Download error:', error);
+            const msg = error?.message || error?.toString() || 'Unknown error — check browser console (F12)';
+            alert('Error downloading file: ' + msg);
+        }
+    }
+
+    // SERVER LINK: SHARE FILE ENDPOINT
+    let _shareTargetFileId = null;
+let _allFiles = [];
+
+async function shareFile(fileId) {
+    _shareTargetFileId = fileId || null;
+    const modal = document.getElementById('shareModal');
+    const fileSelect = document.getElementById('shareFileSelect');
+    const usernameInput = document.getElementById('shareUsernameInput');
+    const statusEl = document.getElementById('shareStatus');
+
+    // Reset state
+    usernameInput.value = '';
+    statusEl.innerText = '';
+    statusEl.style.color = '';
+    document.getElementById('shareUserVerified').style.display = 'none';
+    document.getElementById('shareBtn').disabled = true;
+
+    // Show who is currently logged in so there is no confusion
+    const tokenNow = localStorage.getItem('token');
+    try {
+        const meRes = await fetch('/api/profile', { headers: { 'Authorization': `Bearer ${tokenNow}` } });
+        const meData = await meRes.json();
+        if (meData.success) {
+            statusEl.innerText = `Logged in as: ${meData.user.username}`;
+            statusEl.style.color = '#64748b';
+        }
+    } catch(e) {}
+
+    // Populate file dropdown with owned files — always fresh fetch
+    fileSelect.innerHTML = '<option value="">-- Loading files... --</option>';
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch('/api/files', { headers: { 'Authorization': `Bearer ${token}` } });
+        const allFetched = await res.json();
+
+        // Store ALL files for key lookup during confirmShare
+        _allFiles = allFetched;
+
+        // Any file you can access (owned or shared with you) can be re-shared
+        fileSelect.innerHTML = '<option value="">-- Select a file --</option>';
+
+        if (allFetched.length === 0) {
+            fileSelect.innerHTML = '<option value="">-- No files available --</option>';
+        } else {
+            allFetched.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.id;
+                opt.innerText = f.file_name + ' (' + formatBytes(f.file_size) + ')';
+                if (Number(f.id) === Number(_shareTargetFileId)) opt.selected = true;
+                fileSelect.appendChild(opt);
+            });
+        }
+    } catch(e) {
+        fileSelect.innerHTML = '<option value="">-- Failed to load files --</option>';
+        console.error('Failed to load files for share modal:', e);
+    }
+
+    modal.style.display = 'flex';
 }
 
-// =====================================
-// REMOVE SELECTED FILE FROM INPUT
-// =====================================
-function removeSelectedFile() {
-    const filePicker = document.getElementById('filePicker');
-    if (!filePicker.files.length) {
-        alert('No file selected to remove');
+function closeShareModal() {
+    document.getElementById('shareModal').style.display = 'none';
+    _shareTargetFileId = null;
+}
+
+let _verifiedRecipient = null;
+
+function decodeJwtPayload(token) {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+    const json = decodeURIComponent(
+        atob(padded)
+            .split('')
+            .map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+            .join('')
+    );
+    return JSON.parse(json);
+}
+
+async function verifyShareRecipient() {
+    const username = document.getElementById('shareUsernameInput').value.trim().toLowerCase();
+    const statusEl = document.getElementById('shareStatus');
+    const verifiedBox = document.getElementById('shareUserVerified');
+    document.getElementById('shareBtn').disabled = true;
+    _verifiedRecipient = null;
+
+    if (!username) {
+        statusEl.innerText = 'Please enter a username.';
+        statusEl.style.color = '#ef4444';
+        verifiedBox.style.display = 'none';
         return;
     }
-    filePicker.value = '';
-    alert('Selected file removed from input');
-}
 
-// =====================================
-// DELETE UPLOADED FILE FROM SERVER
-// =====================================
-async function deleteFile(fileId) {
-    if (!confirm('Are you sure you want to permanently delete this file?')) return;
-
-    const token = localStorage.getItem('token'); 
+    const token = localStorage.getItem('token');
+    statusEl.innerText = 'Looking up user...';
+    statusEl.style.color = 'var(--text-muted)';
 
     try {
-        const response = await fetch(`http://localhost:3000/api/delete/${fileId}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+        // Look up the recipient by username
+        const res = await fetch(`/api/users/public-key/${username}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
+        const data = await res.json();
 
-        const data = await response.json();
-
-        if (data.success) {
-            setTimeout(() => {
-                refreshFiles(); 
-            }, 300);
-        } else {
-            alert('Delete rejected: ' + (data.error || 'Backend failed process execution.'));
-        }
-    } catch (error) {
-        console.error('Error executing delete action pipeline:', error);
-        alert('Network request stopped working.');
-    }
-}
-
-// =====================================
-// LOAD USER FILES (Defensive Build)
-// =====================================
-async function refreshFiles() {
-    const list = document.getElementById('fileList');
-    try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        const res = await fetch('http://localhost:3000/api/files', {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-
-        if (!res.ok) {
-            throw new Error(`HTTP Error Status Flags Raised: ${res.status}`);
-        }
-
-        const files = await res.json();
-
-        if (!Array.isArray(files) || files.length === 0) {
-            list.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #777; font-style: italic;">No files uploaded yet.</td></tr>`;
+        if (!res.ok || !data.publicKey) {
+            statusEl.innerText = 'User not found or has no encryption key.';
+            statusEl.style.color = '#ef4444';
+            verifiedBox.style.display = 'none';
             return;
         }
 
-        list.innerHTML = files.map(f => {
-            const cleanName = f.file_name.replace(/"/g, '&quot;');
-            return `
-                <tr>
-                    <td>${f.file_name}</td>
-                    <td>${formatFileSize(f.file_size || 0)}</td>
-                    <td>
-                        <button 
-                            onclick="downloadAndDecrypt(${f.id}, this.getAttribute('data-key'), this.getAttribute('data-iv'), this.getAttribute('data-name'))"
-                            data-key="${f.wrapped_key || ''}" 
-                            data-iv="${f.iv || ''}" 
-                            data-name="${cleanName}">
-                            Download
-                        </button>
-                        <button class="delete-btn" onclick="deleteFile(${f.id})">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        // Get MY user id from the token via server
+        const meRes = await fetch('/api/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const meData = await meRes.json();
 
-    } catch (error) {
-        console.error('Refresh files mapping matrix failure:', error);
-        list.innerHTML = `<tr><td colspan="3" style="color: red; text-align: center; font-weight: bold;">Failed to parse data structure from server.</td></tr>`;
-    }
-}
-
-// =====================================
-// DOWNLOAD & DECRYPT
-// =====================================
-async function downloadAndDecrypt(id, wrappedKey, iv, fileName) {
-    try {
-        const token = localStorage.getItem('token');
-        if (!userKeys || !userKeys.privateKey) {
-            throw new Error("Private key identity missing. Clear browser cache and re-authenticate context session.");
+        if (!meRes.ok || !meData.success) {
+            statusEl.innerText = 'Session error. Please log out and log back in.';
+            statusEl.style.color = '#ef4444';
+            verifiedBox.style.display = 'none';
+            return;
         }
 
-        const res = await fetch(`http://localhost:3000/api/download/${id}`, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
+        // Compare by USER ID only — never by username string
+        if (String(data.userId) === String(meData.user.id)) {
+            statusEl.innerText = `You cannot share a file with yourself. You are logged in as "${meData.user.username}".`;
+            statusEl.style.color = '#ef4444';
+            verifiedBox.style.display = 'none';
+            return;
+        }
 
-        if (!res.ok) throw new Error('Could not fetch storage payload artifact block from server.');
+        _verifiedRecipient = data;
+        statusEl.innerText = '';
+        verifiedBox.style.display = 'flex';
+        document.getElementById('shareVerifiedName').innerText = username;
+        document.getElementById('shareBtn').disabled = false;
 
-        const encryptedBuf = await res.arrayBuffer();
-        console.log('Decrypting file material properties...');
-
-        const decryptedBuf = await decryptFile(
-            encryptedBuf,
-            wrappedKey,
-            iv,
-            userKeys.privateKey
-        );
-
-        console.log('File decrypted successfully');
-
-        const blob = new Blob([decryptedBuf]);
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-    } catch (error) {
-        console.error('Download/decrypt processing failure pipeline:', error);
-        alert('Failed to download and decrypt file payload: ' + error.message);
+    } catch (e) {
+        statusEl.innerText = 'Error: ' + e.message;
+        statusEl.style.color = '#ef4444';
+        verifiedBox.style.display = 'none';
     }
 }
-</script>
 
+async function confirmShare() {
+    const statusEl = document.getElementById('shareStatus');
+    const fileId = parseInt(document.getElementById('shareFileSelect').value);
+
+    if (!fileId) {
+        statusEl.innerText = 'Please select a file to share.';
+        statusEl.style.color = '#ef4444';
+        return;
+    }
+
+    if (!_verifiedRecipient) {
+        statusEl.innerText = 'Please verify the recipient first.';
+        statusEl.style.color = '#ef4444';
+        return;
+    }
+
+    if (!KeyVault.isUnlocked()) {
+        statusEl.innerText = 'Vault is locked. Please log in again.';
+        statusEl.style.color = '#ef4444';
+        return;
+    }
+
+    let fileRecord = _allFiles.find(f => Number(f.id) === Number(fileId));
+    if (!fileRecord) {
+        statusEl.innerText = 'File not found. Please reload and try again.';
+        statusEl.style.color = '#ef4444';
+        return;
+    }
+
+    document.getElementById('shareBtn').disabled = true;
+    statusEl.innerText = 'Preparing encryption keys...';
+    statusEl.style.color = 'var(--text-muted)';
+
+    // For shared files, always fetch the wrapped_key directly from the
+    // shares/received endpoint — the files list COALESCE may return the
+    // owner's wrapped key instead of ours if the LEFT JOIN didn't match.
+    const token = localStorage.getItem('token');
+    if (fileRecord.access_type === 'shared') {
+        try {
+            const recvRes = await fetch('/api/shares/received', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const recvData = await recvRes.json();
+            const shareRecord = recvData.find(s => Number(s.file_id) === Number(fileId));
+            if (shareRecord && shareRecord.wrapped_key) {
+                fileRecord = { ...fileRecord, wrapped_key: shareRecord.wrapped_key };
+            }
+        } catch(e) {
+            console.error('Failed to fetch share wrapped key:', e);
+        }
+    }
+
+    if (!fileRecord.wrapped_key) {
+        statusEl.innerText = 'File encryption key not found. Please reload and try again.';
+        statusEl.style.color = '#ef4444';
+        document.getElementById('shareBtn').disabled = false;
+        return;
+    }
+
+    statusEl.innerText = 'Encrypting key for recipient...';
+    statusEl.style.color = 'var(--text-muted)';
+
+    try {
+        const recipientWrappedKey = await prepareSharedKey(
+            fileRecord.wrapped_key,
+            KeyVault.getPrivateKey(),
+            _verifiedRecipient.publicKey
+        );
+
+        const shareRes = await fetch('/api/files/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                fileId,
+                sharedWithUserId: _verifiedRecipient.userId,
+                wrappedKey: recipientWrappedKey
+            })
+        });
+
+        const shareData = await shareRes.json();
+
+        if (shareData.success) {
+            statusEl.innerText = '✅ File shared successfully!';
+            statusEl.style.color = '#10b981';
+            setTimeout(() => closeShareModal(), 1800);
+            loadFiles();
+        } else {
+            statusEl.innerText = 'Sharing failed: ' + shareData.error;
+            statusEl.style.color = '#ef4444';
+            document.getElementById('shareBtn').disabled = false;
+        }
+
+    } catch (e) {
+        console.error('Share error:', e);
+        statusEl.innerText = 'Error: ' + e.message;
+        statusEl.style.color = '#ef4444';
+        document.getElementById('shareBtn').disabled = false;
+    }
+}
+
+    // SERVER LINK: DELETE FILE ENDPOINT (owner = real delete, recipient = remove my access)
+    async function deleteFile(id, isOwner) {
+      if (!isOwner) {
+        alert('Only the file owner can delete this file. As a recipient, you can only download or re-share it.');
+        return;
+      }
+      if (!confirm("Are you sure you want to delete this file? This removes it for all users it was shared with.")) return;
+
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch(`/api/delete/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          loadFiles();
+          const sharedTab = document.getElementById('tab-shared');
+          if (sharedTab && sharedTab.classList.contains('active-tab')) loadSharedTables();
+        } else {
+          alert("Delete failed: " + data.error);
+        }
+      } catch (e) {
+        alert("Error deleting file.");
+      }
+    }
+
+    // SERVER LINK: FETCH FILES LIST ENDPOINT
+    async function loadFiles() {
+      const token = localStorage.getItem('token');
+      if (!token) return handleLogout();
+
+      try {
+        const res = await fetch('/api/files', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401 || res.status === 403) return handleLogout();
+
+        const files = await res.json();
+
+        // Split: owner files only vs all (owner + shared)
+        const ownFiles   = Array.isArray(files) ? files.filter(f => f.access_type === 'owner') : [];
+        const allFiles   = Array.isArray(files) ? files : [];
+
+        // ── Recent Files (home tab) — owner files only, latest 10
+        const tableBody = document.getElementById('fileListBody');
+        tableBody.innerHTML = '';
+        const recentOwn = ownFiles.slice(0, 10);
+        if (recentOwn.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No files yet. Upload your first file!</td></tr>`;
+        } else {
+          recentOwn.forEach(f => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = buildFileRow(f);
+            tableBody.appendChild(tr);
+          });
+        }
+
+        // ── My Files tab — only this user's own uploaded files
+        const myFilesBody = document.getElementById('myFilesBody');
+        myFilesBody.innerHTML = '';
+        if (ownFiles.length === 0) {
+          myFilesBody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No files uploaded yet.</td></tr>`;
+        } else {
+          ownFiles.forEach(f => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = buildFileRow(f);
+            myFilesBody.appendChild(tr);
+          });
+        }
+
+        // ── Category counts — based on own files only
+        let catBytes  = { doc: 0, img: 0, audio: 0, video: 0, other: 0 };
+        let catCounts = { doc: 0, img: 0, audio: 0, video: 0, other: 0 };
+        ownFiles.forEach(f => {
+          const ext  = f.file_name.split('.').pop().toLowerCase();
+          const size = f.file_size || 0;
+          if (['pdf','doc','docx','txt','xls','xlsx','ppt','pptx','csv'].includes(ext)) { catBytes.doc += size; catCounts.doc++; }
+          else if (['png','jpg','jpeg','webp','gif','svg','bmp'].includes(ext))          { catBytes.img += size; catCounts.img++; }
+          else if (['mp3','wav','ogg','flac'].includes(ext))                             { catBytes.audio += size; catCounts.audio++; }
+          else if (['mp4','mkv','avi','mov'].includes(ext))                             { catBytes.video += size; catCounts.video++; }
+          else                                                                          { catBytes.other += size; catCounts.other++; }
+        });
+
+        // ── Documents tab — own files only
+        const docsBody  = document.getElementById('documentsBody');
+        docsBody.innerHTML = '';
+        const docExts   = ['pdf','doc','docx','txt','xls','xlsx','ppt','pptx','csv'];
+        const docFiles  = ownFiles.filter(f => docExts.includes(f.file_name.split('.').pop().toLowerCase()));
+        if (docFiles.length === 0) {
+          docsBody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No documents found.</td></tr>`;
+        } else {
+          docFiles.forEach(f => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = buildFileRow(f);
+            docsBody.appendChild(tr);
+          });
+        }
+
+        // ── Images tab — own files only
+        const imgGrid  = document.getElementById('imageGrid');
+        imgGrid.innerHTML = '';
+        const imgExts  = ['png','jpg','jpeg','webp','gif','svg','bmp'];
+        const imgFiles = ownFiles.filter(f => imgExts.includes(f.file_name.split('.').pop().toLowerCase()));
+        if (imgFiles.length === 0) {
+          imgGrid.innerHTML = `<p style="color:var(--text-muted);">No images found.</p>`;
+        } else {
+          imgFiles.forEach(f => {
+            const div = document.createElement('div');
+            div.className = 'img-thumb';
+            div.onclick = () => onDownloadClick(f.id, f.file_name);
+            div.innerHTML = `<i data-lucide="image" style="width:32px;height:32px;color:var(--color-img);"></i><span>${escapeHtml(f.file_name)}</span><span style="font-size:0.7rem;">${formatBytes(f.file_size)}</span>`;
+            imgGrid.appendChild(div);
+          });
+        }
+
+        lucide.createIcons();
+
+        document.getElementById('cnt-doc').innerText   = `${catCounts.doc} Documents`;
+        document.getElementById('size-doc').innerText  = formatBytes(catBytes.doc);
+        document.getElementById('leg-doc').innerText   = formatBytes(catBytes.doc);
+        document.getElementById('cnt-img').innerText   = `${catCounts.img} Images`;
+        document.getElementById('size-img').innerText  = formatBytes(catBytes.img);
+        document.getElementById('leg-img').innerText   = formatBytes(catBytes.img);
+        document.getElementById('cnt-audio').innerText = `${catCounts.audio} Audios`;
+        document.getElementById('size-audio').innerText= formatBytes(catBytes.audio);
+        document.getElementById('leg-audio').innerText = formatBytes(catBytes.audio);
+        document.getElementById('cnt-video').innerText = `${catCounts.video} Videos`;
+        document.getElementById('size-video').innerText= formatBytes(catBytes.video);
+        document.getElementById('leg-video').innerText = formatBytes(catBytes.video);
+        document.getElementById('cnt-other').innerText = `${catCounts.other} Others`;
+        document.getElementById('size-other').innerText= formatBytes(catBytes.other);
+        document.getElementById('leg-other').innerText = formatBytes(catBytes.other);
+
+        initChart([catBytes.doc, catBytes.img, catBytes.audio, catBytes.video, catBytes.other]);
+
+      } catch (e) {
+        console.error('Error loading files:', e);
+      }
+    }
+
+// ======================================
+    // TAB NAVIGATION
+    // ======================================
+    function switchTab(name) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active-tab');
+      const navEl = document.getElementById('nav-' + name);
+      if (navEl) navEl.classList.add('active');
+      if (name === 'shared') loadSharedTables();
+    }
+
+    // ======================================
+    // PROFILE MENU & MODAL
+    // ======================================
+    function toggleProfileMenu() {
+      const m = document.getElementById('profileMenu');
+      m.style.display = m.style.display === 'none' ? 'block' : 'none';
+    }
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#avatarInitial') && !e.target.closest('#profileMenu')) {
+        const m = document.getElementById('profileMenu');
+        if (m) m.style.display = 'none';
+      }
+    });
+
+    function showProfileDetails() {
+      document.getElementById('profileMenu').style.display = 'none';
+      const token = localStorage.getItem('token');
+      fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success) return;
+          const u = data.user;
+          document.getElementById('profileModalAvatar').innerText = u.username.charAt(0).toUpperCase();
+          document.getElementById('profileModalFullName').innerText = `${u.first_name} ${u.last_name}`;
+          document.getElementById('profileModalRole').innerText = u.role.toUpperCase();
+          document.getElementById('profileModalUsername').innerText = u.username;
+          document.getElementById('profileModalEmail').innerText = u.personal_email;
+          document.getElementById('profileModalRegion').innerText = u.region_code;
+          document.getElementById('profileModalSince').innerText = new Date(u.created_at).toLocaleDateString();
+          document.getElementById('profileMenuName').innerText = `${u.first_name} ${u.last_name}`;
+          document.getElementById('profileMenuUsername').innerText = '@' + u.username;
+          document.getElementById('profileModal').style.display = 'flex';
+        });
+    }
+    function closeProfileModal() {
+      document.getElementById('profileModal').style.display = 'none';
+    }
+
+    async function refreshDashboard() {
+      const icon = document.getElementById('refreshIcon');
+      const btn = document.getElementById('refreshBtn');
+
+      // Spin the icon
+      icon.style.transition = 'transform 0.6s ease';
+      icon.style.transform = 'rotate(360deg)';
+      btn.disabled = true;
+
+      try {
+        await loadFiles();
+
+        // If currently on shared tab, reload that too
+        const sharedTab = document.getElementById('tab-shared');
+        if (sharedTab && sharedTab.classList.contains('active-tab')) {
+          await loadSharedTables();
+        }
+      } catch(e) {
+        console.error('Refresh error:', e);
+      }
+
+      setTimeout(() => {
+        icon.style.transition = 'none';
+        icon.style.transform = 'rotate(0deg)';
+        btn.disabled = false;
+        lucide.createIcons();
+      }, 650);
+    }
+
+    // ======================================
+    // FILE SEARCH
+    // ======================================
+    function filterFiles(query) {
+      const q = query.toLowerCase();
+      document.querySelectorAll('#fileListBody tr, #myFilesBody tr').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+      });
+    }
+
+    // ======================================
+    // SHARED FILES TABLES
+    // ======================================
+    async function loadSharedTables() {
+      const token = localStorage.getItem('token');
+      const sentBody = document.getElementById('sentSharesBody');
+      const recvBody = document.getElementById('receivedSharesBody');
+      sentBody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Loading...</td></tr>`;
+      recvBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">Loading...</td></tr>`;
+
+      try {
+        const [sentRes, recvRes] = await Promise.all([
+          fetch('/api/shares/sent',     { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/shares/received', { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        const sent = sentRes.ok ? await sentRes.json() : [];
+        const recv = recvRes.ok ? await recvRes.json() : [];
+
+        // SENT TABLE
+        if (!Array.isArray(sent) || sent.length === 0) {
+          sentBody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">You have not shared any files yet.</td></tr>`;
+        } else {
+          sentBody.innerHTML = sent.map(f => {
+            const { label: scanLabel, cls: scanClass } = scanBadge(f.scan_status);
+            const typeLabel = f.is_reshared
+              ? `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:700;">↻ Re-Shared</span>`
+              : `<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:700;">⬆ Shared</span>`;
+            return `<tr>
+              <td style="font-weight:600;">${escapeHtml(f.file_name)}</td>
+              <td>
+                <div style="font-weight:600;">${escapeHtml(f.shared_with_username)}</div>
+                <div style="font-size:0.73rem;color:var(--text-muted);">${escapeHtml(f.shared_with_email || '')}</div>
+              </td>
+              <td>${typeLabel}</td>
+              <td>${formatBytes(f.file_size)}</td>
+              <td><span class="status-badge status-${scanClass}">${scanLabel}</span></td>
+              <td>${new Date(f.shared_at).toLocaleString()}</td>
+              <td style="display:flex;gap:4px;align-items:center;">
+                <button class="btn-action" title="Download my copy" onclick="onDownloadClick(${f.file_id}, '${escapeHtml(f.file_name)}')">
+                  <i data-lucide="download" style="width:16px;height:16px;"></i>
+                </button>
+              </td>
+            </tr>`;
+          }).join('');
+        }
+
+        // RECEIVED TABLE
+        if (!Array.isArray(recv) || recv.length === 0) {
+          recvBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">No files have been shared with you yet.</td></tr>`;
+        } else {
+          recvBody.innerHTML = recv.map(f => {
+            const { label: scanLabel, cls: scanClass } = scanBadge(f.scan_status);
+            const typeLabel = f.is_reshared
+              ? `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:700;">↻ Re-Shared</span>`
+              : `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:700;">⬇ Received</span>`;
+            const senderDisplay = f.shared_by_username ? escapeHtml(f.shared_by_username) : escapeHtml(f.owner_username);
+            return `<tr>
+              <td style="font-weight:600;">${escapeHtml(f.file_name)}</td>
+              <td style="font-weight:600;">${senderDisplay}</td>
+              <td style="color:var(--text-muted);font-size:0.82rem;">${escapeHtml(f.owner_username)}</td>
+              <td>${typeLabel}</td>
+              <td>${formatBytes(f.file_size)}</td>
+              <td><span class="status-badge status-${scanClass}">${scanLabel}</span></td>
+              <td>${new Date(f.shared_at).toLocaleString()}</td>
+              <td style="display:flex;gap:4px;align-items:center;">
+                <button class="btn-action" title="Download" onclick="onDownloadClick(${f.file_id}, '${escapeHtml(f.file_name)}')">
+                  <i data-lucide="download" style="width:16px;height:16px;"></i>
+                </button>
+                <button class="btn-action" title="Re-share with someone else" onclick="shareFile(${f.file_id})" style="color:#3b82f6;">
+                  <i data-lucide="share-2" style="width:16px;height:16px;"></i>
+                </button>
+              </td>
+            </tr>`;
+          }).join('');
+        }
+
+        lucide.createIcons();
+
+      } catch(e) {
+        console.error('Share tables error:', e);
+        sentBody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ef4444;">Error loading shared files.</td></tr>`;
+        recvBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ef4444;">Error loading received files.</td></tr>`;
+      }
+    }
+     
+
+    // ======================================
+    // UTILITIES & STATE CONTROL
+    // ======================================
+    let storageChart;
+
+    function initChart(data = [0, 0, 0, 0, 0]) {
+      const ctx = document.getElementById('storageChart').getContext('2d');
+      if(storageChart) storageChart.destroy();
+      storageChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Documents', 'Images', 'Audios', 'Videos', 'Others'],
+          datasets: [{
+            data: data.every(v => v === 0) ? [1, 1, 1, 1, 1] : data,
+            backgroundColor: ['#3b82f6', '#a855f7', '#f97316', '#84cc16', '#94a3b8'],
+            borderWidth: 0, cutout: '75%'
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+     function scanBadge(status) {
+      if (status === 'CLEAN' || status === 'SAFE') return { label: 'Safe', cls: 'SAFE' };
+      if (status === 'PENDING' || !status) return { label: 'Scanning…', cls: 'PENDING' };
+      return { label: 'Issue Found', cls: 'ISSUE' }; // SUSPICIOUS / INFECTED / anything else
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+function buildFileRow(f) {
+      const isOwner = f.access_type === 'owner';
+      // User-facing scan badge: only show Safe/Scanning/Issue — no raw status names
+      let scanLabel, scanClass;
+      if (f.scan_status === 'CLEAN') { scanLabel = '✓ Safe'; scanClass = 'SAFE'; }
+      else if (!f.scan_status || f.scan_status === 'PENDING') { scanLabel = 'Scanning…'; scanClass = 'PENDING'; }
+      else { scanLabel = 'Issue Found'; scanClass = 'ISSUE'; }
+
+      const dlIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+      const shareIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+      const trashIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+      const sharedLabel = !isOwner ? ` <span style="font-size:0.7rem;color:#3b82f6;background:#eff6ff;padding:2px 6px;border-radius:10px;">Shared</span>` : '';
+      // Delete: owner can delete file entirely; receiver sees no delete — only owner can delete
+      const deleteBtn = isOwner
+        ? `<button class="btn-action" title="Delete file" onclick="deleteFile(${f.id}, true)">${trashIcon}</button>`
+        : `<span style="font-size:0.72rem;color:var(--text-muted);padding:4px 6px;" title="Only the file owner can delete">🔒 Source only</span>`;
+
+      return `
+        <td style="font-weight:600;">${escapeHtml(f.file_name)}${sharedLabel}</td>
+        <td>${formatBytes(f.file_size)}</td>
+        <td>${new Date(f.uploaded_at).toLocaleDateString()}</td>
+        <td><span class="status-badge status-${scanClass}">${scanLabel}</span></td>
+        <td style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+          <button class="btn-action" title="Download" onclick="onDownloadClick(${f.id}, '${escapeHtml(f.file_name)}')">${dlIcon}</button>
+          <button class="btn-action" title="Share" onclick="shareFile(${f.id})" style="color:#3b82f6;">${shareIcon}</button>
+          ${deleteBtn}
+        </td>`;
+    }
+
+    function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showDashboard(username) {
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('dashboardApp').style.display = 'flex';
+      document.getElementById('avatarInitial').innerText = username.charAt(0).toUpperCase();
+      initChart();
+      loadFiles();
+    }
+
+    function handleLogout() {
+    if (!confirm('Are you sure you want to logout?')) return;
+    KeyVault.lock();
+    localStorage.clear();
+    sessionStorage.clear();
+    // Force a full page reload so window.onload cleans everything
+    window.location.reload();
+}
+
+    window.onload = () => {
+        // Always clear on load — user must log in fresh every session.
+        // KeyVault private key is in-memory only, cannot be restored without password.
+        localStorage.clear();
+        sessionStorage.clear();
+    };
+  </script>
 </body>
 </html>
