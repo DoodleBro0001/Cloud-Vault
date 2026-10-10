@@ -31,5 +31,9 @@
   "bugs": {
     "url": "https://github.com/dharshanchandrasegar2-dotcom/secure-vault/issues"
   },
-  "homepage": "https://github.com/dharshanchandrasegar2-dotcom/secure-vault#readme"
+  "homepage": "https://github.com/dharshanchandrasegar2-dotcom/secure-vault#readme",
+  "allowScripts": {
+    "sqlite3@5.1.7": true,
+    "bcrypt@6.0.0": true
+  }
 }
