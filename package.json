@@ -1,0 +1,29 @@
+{
+  "name": "secure-vault",
+  "version": "1.0.0",
+  "description": "Zero-knowledge encrypted file vault",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "@vercel/functions": "^3.10.3",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dharshanchandrasegar2-dotcom/secure-vault.git"
+  }
+}

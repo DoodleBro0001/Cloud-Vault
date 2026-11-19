@@ -1,0 +1,6 @@
+.env
+.env.*
+*.db
+uploads/
+create_admin.js
+list_users.js
