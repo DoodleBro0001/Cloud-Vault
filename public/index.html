@@ -136,6 +136,31 @@
     #refreshBtn:disabled { opacity: 0.6; cursor: not-allowed; }
     .img-thumb { width:160px;height:120px;border-radius:10px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border-color);font-size:0.75rem;color:var(--text-muted);cursor:pointer;transition:box-shadow 0.2s; }
     .img-thumb:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+    /* ===== Mobile / device optimization ===== */
+    #mobileMenuBtn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; margin-right: 12px; color: var(--text-main); padding: 4px 8px; }
+    .mobile-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 150; }
+    @media (max-width: 768px) {
+      #mobileMenuBtn { display: inline-flex; align-items: center; }
+      .sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; width: 250px;
+        transform: translateX(-100%); transition: transform 0.25s ease;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+      }
+      .sidebar.mobile-open { transform: translateX(0); }
+      .mobile-sidebar-overlay.active { display: block; }
+      .top-header { padding: 0 16px; }
+      .search-box { display: none; }
+      .content-body { flex-direction: column; padding: 16px; gap: 16px; }
+      .files-table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .files-table-container table { min-width: 560px; }
+      .category-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+      input[type="text"], input[type="password"], input[type="email"], input[type="tel"], select, button {
+        font-size: 16px;
+      }
+      .auth-card { padding: 28px 22px; }
+      #profileMenu { right: -8px; width: min(220px, calc(100vw - 32px)); }
+    }
   </style>
 </head>
 <body>
@@ -260,9 +285,11 @@
         </ul>
       </div>
     </aside>
+    <div class="mobile-sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
     <div class="main-wrapper">
       <header class="top-header">
+        <button id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Menu">?</button>
         <div class="search-box">
           <i data-lucide="search" style="color: var(--text-muted)"></i>
           <input type="text" id="searchInput" placeholder="Search files..." oninput="filterFiles(this.value)">
@@ -622,7 +649,7 @@
 
       try {
         // FIXED: previously generated PEM keys via generateRSAKeyPair() and
-        // stored the raw private key in plaintext in localStorage, while
+        // stored the raw private key in plaintext in sessionStorage, while
         // sending the server a literal placeholder string "CLIENT_DERIVED_KEY"
         // instead of a real encrypted key. That meant KeyVault.unlock() at
         // login time (which expects a real password-encrypted JWK payload)
@@ -754,8 +781,8 @@ const payload = {
             throw new Error(data.error || 'Login failed');
         }
 
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('username', data.user.username.trim().toLowerCase());
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('username', data.user.username.trim().toLowerCase());
 
         await KeyVault.unlock(
             password,
@@ -776,7 +803,7 @@ const payload = {
       const file = event.target.files[0];
       if (!file) return;
 
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
 
       if (!KeyVault.isUnlocked()) {
         alert('Vault is locked. Please log in again before uploading.');
@@ -792,7 +819,7 @@ const payload = {
       try {
         // FIXED: previously used a separate ad-hoc AES/RSA-PEM scheme
         // (generateAESKey/encryptAESKeyWithRSA against a plaintext PEM key
-        // pulled from localStorage) that had no connection to the real,
+        // pulled from sessionStorage) that had no connection to the real,
         // password-protected KeyVault used at login. Now uses the same
         // KeyVault the rest of the app actually relies on.
         const { blob, wrappedKey, iv } = await KeyVault.encryptFileForUpload(file);
@@ -825,14 +852,14 @@ const payload = {
 
     // Removed: the old decryptFileLocally() called KeyVault.getPrivateKey(),
     // a method that never existed on KeyVault, and fell back to a plaintext
-    // PEM key in localStorage that login never populated. Download now uses
+    // PEM key in sessionStorage that login never populated. Download now uses
     // KeyVault.decryptDownloadedFile() directly (see onDownloadClick below),
     // the same tested path used for the crypto round-trip that already works.
 
     // DOWNLOAD HANDLER INTEGRATED
     async function onDownloadClick(fileId, originalFileName) {
         try {
-            const token = localStorage.getItem('token');
+            const token = sessionStorage.getItem('token');
             if (!token) {
                 alert('Authentication token missing. Please log in again.');
                 window.location.href = '/login.html';
@@ -909,7 +936,7 @@ async function shareFile(fileId) {
     document.getElementById('shareBtn').disabled = true;
 
     // Show who is currently logged in so there is no confusion
-    const tokenNow = localStorage.getItem('token');
+    const tokenNow = sessionStorage.getItem('token');
     try {
         const meRes = await fetch('/api/profile', { headers: { 'Authorization': `Bearer ${tokenNow}` } });
         const meData = await meRes.json();
@@ -921,7 +948,7 @@ async function shareFile(fileId) {
 
     // Populate file dropdown with owned files — always fresh fetch
     fileSelect.innerHTML = '<option value="">-- Loading files... --</option>';
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     try {
         const res = await fetch('/api/files', { headers: { 'Authorization': `Bearer ${token}` } });
         const allFetched = await res.json();
@@ -985,7 +1012,7 @@ async function verifyShareRecipient() {
         return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     statusEl.innerText = 'Looking up user...';
     statusEl.style.color = 'var(--text-muted)';
 
@@ -1073,7 +1100,7 @@ async function confirmShare() {
     // For shared files, always fetch the wrapped_key directly from the
     // shares/received endpoint — the files list COALESCE may return the
     // owner's wrapped key instead of ours if the LEFT JOIN didn't match.
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (fileRecord.access_type === 'shared') {
         try {
             const recvRes = await fetch('/api/shares/received', {
@@ -1145,7 +1172,7 @@ async function confirmShare() {
       }
       if (!confirm("Are you sure you want to delete this file? This removes it for all users it was shared with.")) return;
 
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       try {
         const res = await fetch(`/api/delete/${id}`, {
           method: 'DELETE',
@@ -1166,7 +1193,7 @@ async function confirmShare() {
 
     // SERVER LINK: FETCH FILES LIST ENDPOINT
     async function loadFiles() {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (!token) return handleLogout();
 
       try {
@@ -1307,7 +1334,7 @@ async function confirmShare() {
 
     function showProfileDetails() {
       document.getElementById('profileMenu').style.display = 'none';
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } })
         .then(r => r.json())
         .then(data => {
@@ -1372,7 +1399,7 @@ async function confirmShare() {
     // SHARED FILES TABLES
     // ======================================
     async function loadSharedTables() {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const sentBody = document.getElementById('sentSharesBody');
       const recvBody = document.getElementById('receivedSharesBody');
       sentBody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Loading...</td></tr>`;
@@ -1541,7 +1568,7 @@ function buildFileRow(f) {
     function handleLogout() {
     if (!confirm('Are you sure you want to logout?')) return;
     KeyVault.lock();
-    localStorage.clear();
+    sessionStorage.clear();
     sessionStorage.clear();
     // Force a full page reload so window.onload cleans everything
     window.location.reload();
@@ -1550,9 +1577,22 @@ function buildFileRow(f) {
     window.onload = () => {
         // Always clear on load — user must log in fresh every session.
         // KeyVault private key is in-memory only, cannot be restored without password.
-        localStorage.clear();
+        sessionStorage.clear();
         sessionStorage.clear();
     };
+
+    function toggleMobileSidebar() {
+        document.querySelector(".sidebar").classList.toggle("mobile-open");
+        document.querySelector(".mobile-sidebar-overlay").classList.toggle("active");
+    }
+    (function () {
+        const sidebarEl = document.querySelector(".sidebar");
+        if (sidebarEl) {
+            sidebarEl.addEventListener("click", function (e) {
+                if (e.target.closest("a") && window.innerWidth <= 768) toggleMobileSidebar();
+            });
+        }
+    })();
   </script>
 </body>
 </html>

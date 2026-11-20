@@ -399,6 +399,23 @@
 .user-tab-btn { padding:8px 14px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-family:var(--font-mono);font-size:0.72rem;cursor:pointer;transition:all 0.15s; }
 .user-tab-btn:hover,.user-tab-btn.active { background:rgba(255,82,82,0.12);color:var(--alert-bright);border-color:var(--alert-dim); }
 .deleted-row td { opacity:0.45;text-decoration:line-through; }
+
+        /* ===== Mobile / device optimization ===== */
+        #mobileAdminMenuBtn { display: none; background: var(--panel-light); border: 1px solid var(--border); color: var(--text-primary); font-size: 20px; border-radius: 8px; padding: 6px 12px; cursor: pointer; margin-bottom: 16px; }
+        .mobile-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table-scroll table { min-width: 620px; }
+        @media (max-width: 900px) {
+            #mobileAdminMenuBtn { display: inline-block; }
+            #adminSidebar { transform: translateX(-100%) !important; transition: transform 0.25s ease; }
+            #adminSidebar.mobile-open { transform: translateX(0) !important; }
+            .mobile-sidebar-overlay.active { display: block; }
+            #dashboardMainContent { margin-left: 0 !important; padding: 18px !important; }
+            .stat-cards { gap: 10px; }
+            .stat-card { min-width: 45% !important; }
+            .auth-container { width: calc(100vw - 40px) !important; padding: 30px 22px 24px !important; }
+            input[type="text"], input[type="password"] { font-size: 16px; }
+        }
     </style>
 </head>
 <body>
@@ -443,7 +460,7 @@
     <div id="dashboardPanel" style="display:none;width:100vw;min-height:100vh;display:none;flex-direction:row;">
 
         <!-- LEFT SIDEBAR -->
-        <div id="adminSidebar" style="width:220px;min-height:100vh;background:#13181F;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;position:fixed;left:0;top:0;bottom:0;z-index:100;overflow-y:auto;">
+        <div id="adminSidebar" style="width:220px;min-height:100vh;background:#13181F;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;position:fixed;left:0;top:0;bottom:0;z-index:200;overflow-y:auto;">
             <div style="padding:20px 16px 12px;border-bottom:1px solid var(--border);">
                 <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--text-primary);font-weight:600;">⚙ Vault Admin</div>
                 <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--alert-bright);letter-spacing:0.1em;margin-top:2px;">CONTROL PANEL</div>
@@ -464,9 +481,11 @@
                 <button onclick="terminateAdminSession()" style="width:100%;margin-top:8px;padding:9px;background:rgba(255,82,82,0.12);border:1px solid var(--alert-dim);border-radius:8px;color:var(--alert-bright);font-family:var(--font-mono);font-size:0.72rem;cursor:pointer;letter-spacing:0.04em;">🔴 Terminate Session</button>
             </div>
         </div>
+        <div class="mobile-sidebar-overlay" id="adminSidebarOverlay" onclick="toggleMobileAdminSidebar()"></div>
 
         <!-- MAIN CONTENT AREA -->
-        <div style="margin-left:220px;flex:1;padding:28px 32px;min-height:100vh;">
+        <div id="dashboardMainContent" style="margin-left:220px;flex:1;padding:28px 32px;min-height:100vh;">
+            <button id="mobileAdminMenuBtn" onclick="toggleMobileAdminSidebar()">? Menu</button>
 
             <!-- DASHBOARD SECTION -->
             <div id="section-dashboard" class="admin-section">
@@ -476,37 +495,37 @@
                 </div>
                 <div class="stat-cards" id="statCards"></div>
                 <h2 class="sec-title">All Users</h2>
-                <table>
+                <div class="table-scroll"><table>
                     <thead><tr><th>ID</th><th>Username</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody id="usersMetricsRowInsertionTarget"></tbody>
-                </table>
+                </table></div>
             </div>
 
             <!-- ALL FILES SECTION -->
             <div id="section-files" class="admin-section" style="display:none;">
                 <h1 style="font-family:var(--font-display);font-size:1.5rem;color:var(--text-primary);margin-bottom:24px;">File Repository</h1>
-                <table>
+                <div class="table-scroll"><table>
                     <thead><tr><th>ID</th><th>Owner</th><th>File Name</th><th>Size</th><th>Uploaded</th><th>Scan</th><th>Threat</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody id="filesMetricsRowInsertionTarget"></tbody>
-                </table>
+                </table></div>
             </div>
 
             <!-- AUDIT LOGS SECTION -->
             <div id="section-logs" class="admin-section" style="display:none;">
                 <h1 style="font-family:var(--font-display);font-size:1.5rem;color:var(--text-primary);margin-bottom:24px;">Audit Logs</h1>
-                <table>
+                <div class="table-scroll"><table>
                     <thead><tr><th>Time</th><th>User</th><th>Action</th><th>File</th><th>IP</th><th>Result</th></tr></thead>
                     <tbody id="logsRowInsertionTarget"></tbody>
-                </table>
+                </table></div>
             </div>
 
             <!-- TRAFFIC SECTION -->
             <div id="section-traffic" class="admin-section" style="display:none;">
                 <h1 style="font-family:var(--font-display);font-size:1.5rem;color:var(--text-primary);margin-bottom:24px;">Web Traffic — Last 24h</h1>
-                <table>
+                <div class="table-scroll"><table>
                     <thead><tr><th>Endpoint</th><th>Method</th><th>Hits</th><th>Avg Response</th><th>Errors</th></tr></thead>
                     <tbody id="trafficRowInsertionTarget"></tbody>
-                </table>
+                </table></div>
             </div>
 
             <!-- CREATE ADMIN SECTION -->
@@ -551,31 +570,31 @@
                 </div>
                 <!-- Files tab -->
                 <div id="user-tab-files" class="user-tab-content" style="display:none;">
-                    <table>
+                    <div class="table-scroll"><table>
                         <thead><tr><th>ID</th><th>File Name</th><th>Size</th><th>Uploaded</th><th>Scan</th><th>Threat</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody id="userFilesBody"></tbody>
-                    </table>
+                    </table></div>
                 </div>
                 <!-- Shared tab -->
                 <div id="user-tab-shared" class="user-tab-content" style="display:none;">
-                    <table>
+                    <div class="table-scroll"><table>
                         <thead><tr><th>File</th><th>Shared With</th><th>Type</th><th>Shared At</th></tr></thead>
                         <tbody id="userSentBody"></tbody>
-                    </table>
+                    </table></div>
                 </div>
                 <!-- Received tab -->
                 <div id="user-tab-received" class="user-tab-content" style="display:none;">
-                    <table>
+                    <div class="table-scroll"><table>
                         <thead><tr><th>File</th><th>Sent By</th><th>Type</th><th>Received At</th></tr></thead>
                         <tbody id="userReceivedBody"></tbody>
-                    </table>
+                    </table></div>
                 </div>
                 <!-- Logs tab -->
                 <div id="user-tab-logs" class="user-tab-content" style="display:none;">
-                    <table>
+                    <div class="table-scroll"><table>
                         <thead><tr><th>Time</th><th>Action</th><th>File</th><th>IP</th><th>Result</th></tr></thead>
                         <tbody id="userLogsBody"></tbody>
-                    </table>
+                    </table></div>
                 </div>
             </div>
 
@@ -674,7 +693,9 @@
                 <div>Registered: ${new Date(u.created_at).toLocaleString()}</div>
             `;
             document.getElementById('userActionBtns').innerHTML = `
-                <button class="btn btn-logout" style="padding:8px 14px;font-size:12px;width:auto;" onclick="removeUser(${u.id}, '${escapeForInlineAttr(u.username)}', '${u.role}', this)">🗑 Remove User</button>
+                ${Number(u.is_removed) === 1
+                    ? `<button class="btn btn-logout" style="padding:8px 14px;font-size:12px;width:auto;background:#7a1212;" onclick="purgeUser(${u.id}, '${escapeForInlineAttr(u.username)}')">⚠ Permanently Delete</button>`
+                    : `<button class="btn btn-logout" style="padding:8px 14px;font-size:12px;width:auto;" onclick="removeUser(${u.id}, '${escapeForInlineAttr(u.username)}', '${u.role}', this)">🗑 Remove User</button>`}
             `;
 
             // Files tab
@@ -1027,6 +1048,28 @@
         } catch (e) { alert('Error: ' + e.message); }
     }
 
+    async function purgeUser(userId, username) {
+        if (!confirm(`Permanently delete "${username}" and all their files and shares? This cannot be undone and frees their email and username.`)) return;
+        const password = prompt('Enter YOUR OWN admin password to approve permanent deletion:');
+        if (!password) return;
+        const token = localStorage.getItem('vaultAdminSessionToken');
+        try {
+            const res = await fetch(`/api/admin/users/${userId}/purge`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            if (!data.success) return alert('Delete failed: ' + data.error);
+            alert(`"${username}" was permanently deleted.`);
+            const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+            if (row) row.remove();
+            const sidebarUser = document.getElementById('sbuser-' + userId);
+            if (sidebarUser) sidebarUser.remove();
+            showAdminSection('dashboard');
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
     async function createNewAdmin() {
         const token = localStorage.getItem('vaultAdminSessionToken');
         const username = document.getElementById('newAdminUsername').value.trim();
@@ -1062,6 +1105,18 @@
         document.getElementById('dashboardPanel').style.display = 'none';
         document.body.style.alignItems = 'center';
     }
+function toggleMobileAdminSidebar() {
+        document.getElementById("adminSidebar").classList.toggle("mobile-open");
+        document.getElementById("adminSidebarOverlay").classList.toggle("active");
+    }
+    (function () {
+        const sb = document.getElementById("adminSidebar");
+        if (sb) {
+            sb.addEventListener("click", function (e) {
+                if (e.target.closest("button") && window.innerWidth <= 900) toggleMobileAdminSidebar();
+            });
+        }
+    })();
 </script>
 </body>
 </html>
